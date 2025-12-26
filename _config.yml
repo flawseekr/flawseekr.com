@@ -18,9 +18,9 @@ menu:
     url: /contact
   - title: Feed
     url: /feed.xml
-email: youremail@test.com
+email: flawseekr@gmail.com
 disqus_username: flawseekr
-formspree_form_id: xdaonlwn
+formspree_form_id: xkonnrww
 
 # ----- Social Media Settings -----
 github_username: flawseekr
@@ -38,8 +38,8 @@ two_columns_layout: true
 
 # ----- Advanced Settings -----
 baseurl: ""
-url: "" # the base hostname & protocol for your site
-google_analytics: "UA-XXXXXXXX-X"
+url: "" 
+google_analytics: "G-S22PVTFY1K"
 language: "en"
 categories_folder: category
 sent_message_url: "/contact/message-sent/"
