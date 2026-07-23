@@ -6,6 +6,8 @@ sitemap: false
 [
   {%- assign posts = site.blog | sort: "date" | reverse -%}
   {%- for a in posts -%}
+  {%- assign read_words = a.content | strip_html | number_of_words -%}
+  {%- assign read_time = read_words | divided_by: 200.0 | ceil | at_least: 1 -%}
   {
     "title": {{ a.title | jsonify }},
     "url": {{ a.url | relative_url | jsonify }},
@@ -15,7 +17,7 @@ sitemap: false
     "category": {{ a.category | jsonify }},
     "tags": {{ a.tags | jsonify }},
     "date": {{ a.date | date: "%b %-d, %Y" | jsonify }},
-    "read_time": {{ a.read_time | default: 0 }}
+    "read_time": {{ read_time }}
   }{%- unless forloop.last -%},{%- endunless -%}
   {%- endfor -%}
 ]

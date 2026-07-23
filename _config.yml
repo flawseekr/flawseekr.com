@@ -67,7 +67,9 @@ sass:
 collections:
   blog:
     output: true
-    permalink: /blog/:name/
+    # :slug resolves from data["slug"], which _plugins/slug_from_title.rb
+    # derives from the post's `title:` — not from the filename.
+    permalink: /blog/:slug/
 
 # ---------------------------------------------------------------------------
 #  Front-matter defaults

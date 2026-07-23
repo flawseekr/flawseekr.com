@@ -4,7 +4,6 @@ date: 2026-07-13
 author: xchopath
 category: Android Security
 tags: [android, ssrf, intent-injection, bug-bounty]
-read_time: 13
 description: >-
   How reading one exported Activity by hand, following an unvalidated URL field,
   and misreading the impact twice led to a one-tap session token leak any

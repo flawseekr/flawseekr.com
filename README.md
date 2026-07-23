@@ -69,12 +69,15 @@ date: 2026-07-22
 author: xchopath        # must match a key in _data/authors.yml
 category: Security        # one category → /category/security/
 tags: [c, fuzzing]        # many tags → /tag/c/, /tag/fuzzing/
-read_time: 7
 description: "One-line summary used in cards, search and SEO."
 ---
 
 Your Markdown here.
 ```
+
+"X min read" is computed automatically from the post's word count (200 wpm) —
+see `_layouts/article.html` and `search.json` — there's no `read_time:` field
+to set.
 
 Any image embedded in the post body should carry explicit dimensions and
 `loading="lazy"` — kramdown renders plain `![]()` Markdown images with

@@ -4,7 +4,6 @@ date: 2025-12-28
 author: xchopath
 category: Android Security
 tags: [android, xss, webview, javascript-bridge, bug-bounty]
-read_time: 9
 description: >-
   A clean reflected XSS on an auth-less subdomain that topped out at alert(1),
   and the investigation that turned it into a critical account takeover once I

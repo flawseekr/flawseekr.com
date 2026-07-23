@@ -1,10 +1,9 @@
 ---
-title: "A $3,500 HTML Injection, Escalating a Low Bug with a CSRF-like"
+title: "A $3500 USD HTML Injection, Escalating a Low Bug with a CSRF-like"
 date: 2025-12-22
 author: xchopath
 category: Web Security
 tags: [html-injection, csrf, bug-bounty, xss]
-read_time: 8
 description: >-
   A reflected HTML injection my partner was about to file as low. Here is the
   investigation that turned it into an account takeover, including the XSS path

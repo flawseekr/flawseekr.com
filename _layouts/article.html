@@ -2,6 +2,8 @@
 layout: default
 ---
 {%- assign author = site.data.authors[page.author] -%}
+{%- assign read_words = content | strip_html | number_of_words -%}
+{%- assign read_time = read_words | divided_by: 200.0 | ceil | at_least: 1 -%}
 <article class="wrap article">
   <header class="article__header">
     {%- if page.category -%}
@@ -25,7 +27,7 @@ layout: default
       {%- endif -%}
       <div class="article__meta-right muted">
         <time datetime="{{ page.date | date_to_xmlschema }}">{{ page.date | date: '%B %-d, %Y' }}</time>
-        {%- if page.read_time -%}<span class="dot">·</span><span>{{ page.read_time }} min read</span>{%- endif -%}
+        <span class="dot">·</span><span>{{ read_time }} min read</span>
       </div>
     </div>
   </header>
