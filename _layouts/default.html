@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="{{ site.lang | default: 'en' }}" data-theme="dark" data-page="{{ page.layout }}">
+  {%- include head.html -%}
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    {%- include header.html -%}
+
+    <main id="main" class="site-main" tabindex="-1">
+      {{ content }}
+    </main>
+
+    {%- include footer.html -%}
+    {%- include consent-banner.html -%}
+    <script src="{{ '/assets/js/theme.js' | relative_url }}" defer></script>
+    <script src="{{ '/assets/js/nav.js' | relative_url }}" defer></script>
+    <script src="{{ '/assets/js/consent.js' | relative_url }}" defer></script>
+    <script src="{{ '/assets/js/analytics.js' | relative_url }}" defer></script>
+    {%- if page.layout == 'home' -%}
+    <script src="{{ '/assets/js/home.js' | relative_url }}" defer></script>
+    {%- endif -%}
+    {%- if page.layout == 'article' -%}
+    <script src="{{ '/assets/js/comments.js' | relative_url }}" defer></script>
+    {%- endif -%}
+  </body>
+</html>

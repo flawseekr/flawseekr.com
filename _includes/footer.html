@@ -1,0 +1,26 @@
+<footer class="site-footer">
+  <div class="wrap site-footer__inner">
+    <div class="site-footer__brand">
+      <span class="brand__mark" aria-hidden="true">&gt;F_</span>
+      <span class="brand__name">{{ site.title }}</span>
+      <p class="muted">{{ site.tagline }}</p>
+    </div>
+
+    <nav class="site-footer__nav" aria-label="Footer">
+      {%- for item in site.nav -%}
+        <a href="{{ item.url | relative_url }}">{{ item.title }}</a>
+      {%- endfor -%}
+      <a href="{{ '/search/' | relative_url }}">Search</a>
+    </nav>
+
+    <div class="social-links site-footer__social">
+      {%- if site.contact.github -%}<a class="social-link" href="https://github.com/{{ site.contact.github }}" aria-label="GitHub" title="GitHub" rel="noopener">{%- include social-icon.html type="github" -%}</a>{%- endif -%}
+      {%- if site.contact.twitter -%}<a class="social-link" href="https://x.com/{{ site.contact.twitter }}" aria-label="X (Twitter)" title="X" rel="noopener">{%- include social-icon.html type="x" -%}</a>{%- endif -%}
+      {%- if site.contact.linkedin -%}<a class="social-link" href="https://linkedin.com/company/{{ site.contact.linkedin }}" aria-label="LinkedIn" title="LinkedIn" rel="noopener">{%- include social-icon.html type="linkedin" -%}</a>{%- endif -%}
+      {%- if site.contact.email -%}<a class="social-link" href="mailto:{{ site.contact.email }}" aria-label="Email" title="Email">{%- include social-icon.html type="email" -%}</a>{%- endif -%}
+    </div>
+  </div>
+  <div class="wrap site-footer__legal">
+    <span class="muted">© {{ site.time | date: '%Y' }} {{ site.title }}. Built with Jekyll.</span>
+  </div>
+</footer>

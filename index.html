@@ -1,0 +1,71 @@
+---
+layout: home
+title: Home
+description: Flawseekr — a research collective writing about security, systems and the craft of building software.
+---
+
+{%- comment -%} Full-page scroll-snap landing (home only). See _sass/_home.scss + assets/js/home.js {%- endcomment -%}
+
+<!-- Panel jump dots -->
+<nav class="page-dots" aria-label="Sections">
+  <button class="page-dot is-active" type="button" data-target="panel-whoami" aria-label="Intro"></button>
+  <button class="page-dot" type="button" data-target="panel-do" aria-label="What we do"></button>
+</nav>
+
+<!-- ===== Panel 1: whoami ===== -->
+<section id="panel-whoami" class="panel hero" tabindex="-1">
+  <div class="wrap hero__inner">
+    <p class="eyebrow">$ whoami</p>
+    <h1 class="hero__title">
+      Too lazy to REAL WORK.<br><span class="grad">Creative</span> enough to AVOID it.
+    </h1>
+    <p class="hero__lead">
+      Offensive security, defensive laziness. We'll happily spend a year
+      rediscovering bugs one Google search could've found, then call it
+      <mark class="mark">security research</mark>. Half our best findings happened
+      while avoiding actual work, purely out of laziness.
+    </p>
+    <div class="hero__actions">
+      <a class="btn btn--primary" href="{{ '/blog/' | relative_url }}">Read the blog</a>
+      <a class="btn btn--ghost" href="{{ '/about/' | relative_url }}">Who we are</a>
+    </div>
+    <div class="hero__stats">
+      <div><strong>{{ site.blog | size }}</strong><span>Posts</span></div>
+      <div><strong>{{ site.data.team | size }}</strong><span>People</span></div>
+      <div><strong>∞</strong><span>Curiosity</span></div>
+    </div>
+  </div>
+  <div class="hero__grid" aria-hidden="true"></div>
+  <a class="scroll-cue" href="#panel-do" aria-label="Next section">
+    <span>scroll</span>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+  </a>
+</section>
+
+<!-- ===== Panel 2: what we do ===== -->
+<section id="panel-do" class="panel section wrap" tabindex="-1">
+  <div class="panel__body">
+    <header class="section__head reveal">
+      <p class="eyebrow">// what we do</p>
+      <h2 class="section-title">Sleep. Sleep. Hack.</h2>
+    </header>
+    <div class="feature-grid">
+      {%- for item in site.data.services -%}
+      <div class="card feature reveal">
+        <div class="feature__icon" aria-hidden="true">{{ item.icon }}</div>
+        <h3 class="feature__title">{{ item.title }}</h3>
+        <p class="feature__text">{{ item.text }}</p>
+      </div>
+      {%- endfor -%}
+    </div>
+  </div>
+
+  <footer class="home-foot reveal">
+    <span class="muted">© {{ site.time | date: '%Y' }} {{ site.title }}</span>
+    <nav aria-label="Footer">
+      <a href="{{ '/about/' | relative_url }}">Who we are</a>
+      <a href="{{ '/blog/' | relative_url }}">Blog</a>
+      <a href="{{ '/contact/' | relative_url }}">Contact</a>
+    </nav>
+  </footer>
+</section>

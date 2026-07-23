@@ -1,0 +1,72 @@
+---
+layout: default
+---
+{%- assign author = site.data.authors[page.author] -%}
+<article class="wrap article">
+  <header class="article__header">
+    {%- if page.category -%}
+    {%- assign cat_slug = page.category | slugify -%}
+    <a class="tagchip tagchip--cat" href="{{ '/category/' | append: cat_slug | append: '/' | relative_url }}">{{ page.category }}</a>
+    {%- endif -%}
+    <h1 class="article__title">{{ page.title }}</h1>
+    {%- if page.description -%}<p class="article__lead">{{ page.description }}</p>{%- endif -%}
+
+    <div class="article__meta">
+      {%- if author -%}
+      <a class="author-pill" href="{{ '/@' | append: page.author | append: '/' | relative_url }}">
+        <span class="author-pill__avatar" aria-hidden="true">
+          {%- if author.avatar -%}<img src="{{ author.avatar | relative_url }}" alt="" width="168" height="168" loading="lazy">{%- else -%}{{ author.name | slice: 0, 1 | upcase }}{%- endif -%}
+        </span>
+        <span>
+          <span class="author-pill__name">{{ author.name }}</span>
+          <span class="author-pill__handle">@{{ page.author }}</span>
+        </span>
+      </a>
+      {%- endif -%}
+      <div class="article__meta-right muted">
+        <time datetime="{{ page.date | date_to_xmlschema }}">{{ page.date | date: '%B %-d, %Y' }}</time>
+        {%- if page.read_time -%}<span class="dot">·</span><span>{{ page.read_time }} min read</span>{%- endif -%}
+      </div>
+    </div>
+  </header>
+
+  <div class="prose article__body">
+    {{ content }}
+  </div>
+
+  {%- if page.tags and page.tags.size > 0 -%}
+  <div class="taglist article__tags">
+    {%- for t in page.tags -%}
+    {%- assign t_slug = t | slugify -%}
+    <a class="tagchip" href="{{ '/tag/' | append: t_slug | append: '/' | relative_url }}">#{{ t }}</a>
+    {%- endfor -%}
+  </div>
+  {%- endif -%}
+
+  {%- if author -%}
+  <aside class="author-bio card">
+    <div class="author-bio__avatar" aria-hidden="true">
+      {%- if author.avatar -%}<img src="{{ author.avatar | relative_url }}" alt="" width="168" height="168" loading="lazy">{%- else -%}{{ author.name | slice: 0, 1 | upcase }}{%- endif -%}
+    </div>
+    <div>
+      <h2 class="author-bio__name">{{ author.name }} <span class="muted">@{{ page.author }}</span></h2>
+      {%- if author.bio -%}<p class="author-bio__text">{{ author.bio }}</p>{%- endif -%}
+      {%- include social-links.html author=author class="author-bio__links" -%}
+      <a class="link-arrow" href="{{ '/@' | append: page.author | append: '/' | relative_url }}">More by {{ author.name }} →</a>
+    </div>
+  </aside>
+  {%- endif -%}
+
+  {%- comment -%} Related: same category, excluding current {%- endcomment -%}
+  {%- assign related = site.blog | where: "category", page.category | where_exp: "i", "i.url != page.url" | slice: 0, 2 -%}
+  {%- if related.size > 0 -%}
+  <section class="related">
+    <h2 class="section-title">More in {{ page.category }}</h2>
+    <div class="card-grid">
+      {%- for a in related -%}{%- include article-card.html article=a -%}{%- endfor -%}
+    </div>
+  </section>
+  {%- endif -%}
+
+  {%- include disqus.html -%}
+</article>

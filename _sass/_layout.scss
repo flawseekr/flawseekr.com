@@ -1,0 +1,161 @@
+// ===========================================================================
+//  Header, footer, section rhythm
+// ===========================================================================
+
+// ---- Header ---------------------------------------------------------------
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: saturate(180%) blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.site-header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  height: 64px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+.brand:hover { color: var(--text); }
+.brand__mark {
+  font-family: var(--font-mono);
+  color: var(--accent);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+}
+
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.site-nav__link {
+  color: var(--text-soft);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  padding: 0.45rem 0.7rem;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s var(--ease), background 0.15s var(--ease);
+}
+.site-nav__link:hover { color: var(--text); background: var(--surface); }
+.site-nav__link.is-active { color: var(--accent); }
+
+.theme-btn {
+  position: relative;              // stack both icons; cross-fade, don't toggle
+  margin-left: 0.4rem;
+  display: inline-grid;
+  place-items: center;
+  width: 40px; height: 40px;       // ≥40×40 desktop hit area
+  color: var(--text-soft);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 0.15s var(--ease), border-color 0.15s var(--ease), scale 0.12s var(--ease);
+}
+.theme-btn:hover { color: var(--accent); border-color: var(--border-strong); }
+.theme-btn:active { scale: 0.96; }
+
+// Both icons live in the DOM, absolutely stacked, and cross-fade with
+// opacity + scale + blur (principle 7). The icon shown is the mode you switch TO.
+.theme-btn svg {
+  position: absolute;
+  inset: 0; margin: auto;          // stay centred even when the button is full-width
+  transition: opacity 0.3s cubic-bezier(0.2, 0, 0, 1),
+              scale 0.3s cubic-bezier(0.2, 0, 0, 1),
+              filter 0.3s cubic-bezier(0.2, 0, 0, 1);
+}
+.icon-sun  { opacity: 0; scale: 0.25; filter: blur(4px); }
+.icon-moon { opacity: 1; scale: 1;    filter: blur(0); }
+:root[data-theme="dark"] .icon-sun  { opacity: 1; scale: 1;    filter: blur(0); }
+:root[data-theme="dark"] .icon-moon { opacity: 0; scale: 0.25; filter: blur(4px); }
+
+// Mobile nav
+.nav-burger { display: none; }
+@media (max-width: 720px) {
+  .nav-burger {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 44px; height: 44px;          // 44px touch target on mobile
+    align-items: center; justify-content: center;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    border: 1px solid var(--border-interactive);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    cursor: pointer;
+  }
+  .nav-burger span {
+    width: 18px; height: 2px; background: var(--text);
+    transition: transform 0.2s var(--ease), opacity 0.2s var(--ease);
+  }
+  .site-nav {
+    position: fixed;
+    inset: 64px 0 auto 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.15rem;
+    background: var(--bg-soft);
+    border-bottom: 1px solid var(--border);
+    padding: 0.75rem clamp(1rem, 5vw, 2rem) 1.25rem;
+    transform: translateY(-120%);
+    transition: transform 0.25s var(--ease);
+    box-shadow: var(--shadow);
+  }
+  .nav-burger[aria-expanded="true"] ~ .site-nav { transform: translateY(0); }
+  .site-nav__link { padding: 0.7rem 0.6rem; font-size: var(--fs-base); }
+  .theme-btn { margin: 0.4rem 0 0; width: 100%; height: 44px; }  // 44px touch target
+}
+
+// ---- Section rhythm -------------------------------------------------------
+.section { padding-block: clamp(3rem, 2rem + 5vw, 6rem); }
+.section__head { margin-bottom: 2.25rem; max-width: var(--wrap-narrow); }
+
+// ---- Page header ----------------------------------------------------------
+.page { padding-block: clamp(2.5rem, 2rem + 3vw, 4.5rem); max-width: var(--wrap-narrow); }
+.page__title { font-size: var(--fs-3xl); }
+.page__subtitle { font-size: var(--fs-lg); color: var(--text-soft); max-width: 60ch; }
+
+// ---- Footer ---------------------------------------------------------------
+.site-footer {
+  border-top: 1px solid var(--border);
+  background: var(--bg-soft);
+  margin-top: 4rem;
+}
+.site-footer__inner {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr;
+  gap: 2rem;
+  padding-block: 3rem 2rem;
+}
+.site-footer__brand .brand__name { font-weight: 700; margin-left: 0.5rem; }
+.site-footer__brand p { margin-top: 0.75rem; max-width: 34ch; font-size: var(--fs-sm); }
+.site-footer__nav { display: flex; flex-direction: column; gap: 0.6rem; }
+.site-footer__nav a { color: var(--text-soft); font-size: var(--fs-sm); }
+.site-footer__nav a:hover { color: var(--accent); }
+.site-footer__social { align-content: flex-start; }
+.site-footer__legal {
+  border-top: 1px solid var(--border);
+  padding-block: 1.25rem;
+  font-size: var(--fs-sm);
+}
+@media (max-width: 640px) {
+  .site-footer__inner { grid-template-columns: 1fr 1fr; }
+  .site-footer__brand { grid-column: 1 / -1; }
+}

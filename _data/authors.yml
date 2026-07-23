@@ -1,0 +1,12 @@
+# Authors — keyed by username (the key becomes /@username).
+# Schema: name, avatar (optional image path), bio, and links.
+# Links (all optional): github, twitter, hackerone, linkedin usernames;
+# website (full URL); email. Rendered as icons via _includes/social-links.html.
+xchopath:
+  name: Novran F.
+  avatar: /assets/img/xchopath.jpg
+  bio: >-
+    Part-time Bug Bounty Hunter. Full-time Procrastinator.
+  github: xchopath
+  twitter: xchopath
+  hackerone: xchopath

@@ -1,0 +1,7 @@
+# Team cards shown on the home page and the About page.
+# Schema: name, username (links to /@username), avatar (optional), bio, links.
+- name: Novran F.
+  username: xchopath
+  avatar: /assets/img/xchopath.jpg
+  bio: Part-time Bug Bounty Hunter. Full-time Procrastinator.
+  github: xchopath

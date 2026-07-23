@@ -1,0 +1,24 @@
+{%- comment -%} Team member card. Pass a member via include.member {%- endcomment -%}
+{%- assign m = include.member -%}
+{%- comment -%} Pull social links from the author record so they stay in sync. {%- endcomment -%}
+{%- assign au = site.data.authors[m.username] | default: m -%}
+<article class="card team-card">
+  <div class="team-card__avatar" aria-hidden="true">
+    {%- if m.avatar -%}
+      <img src="{{ m.avatar | relative_url }}" alt="" width="168" height="168" loading="lazy">
+    {%- else -%}
+      <span>{{ m.name | slice: 0, 1 | upcase }}</span>
+    {%- endif -%}
+  </div>
+  <h3 class="team-card__name">{{ m.name }}</h3>
+  {%- if m.username -%}<p class="team-card__handle">@{{ m.username }}</p>{%- endif -%}
+  {%- if m.bio -%}<p class="team-card__bio">{{ m.bio }}</p>{%- endif -%}
+  <div class="social-links team-card__links">
+    {%- if au.github -%}<a class="social-link" href="https://github.com/{{ au.github }}" rel="noopener" aria-label="GitHub" title="GitHub">{%- include social-icon.html type="github" -%}</a>{%- endif -%}
+    {%- if au.twitter -%}<a class="social-link" href="https://x.com/{{ au.twitter }}" rel="noopener" aria-label="X (Twitter)" title="X">{%- include social-icon.html type="x" -%}</a>{%- endif -%}
+    {%- if au.hackerone -%}<a class="social-link" href="https://hackerone.com/{{ au.hackerone }}?type=user" rel="noopener" aria-label="HackerOne" title="HackerOne">{%- include social-icon.html type="hackerone" -%}</a>{%- endif -%}
+  </div>
+  {%- if m.username -%}
+  <a class="team-card__articles" href="{{ '/@' | append: m.username | append: '/' | relative_url }}">See {{ m.username }}'s articles →</a>
+  {%- endif -%}
+</article>

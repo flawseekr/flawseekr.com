@@ -1,0 +1,126 @@
+# ---------------------------------------------------------------------------
+#  Site settings
+# ---------------------------------------------------------------------------
+title: Flawseekr
+tagline: A support group for self-proclaimed security researchers.
+description: >-
+  Flawseekr is a small research collective writing about security,
+  systems and the craft of building software. Minimalist, modern, techie.
+lang: en
+locale: en_US
+timezone: Asia/Jakarta
+
+url: "https://flawseekr.com"
+baseurl: ""
+
+author:
+  name: Flawseekr
+  email: xchopath@wearehackerone.com
+
+# Contact channels (used in footer.html + contact.md). Deliberately NOT named
+# `social:` — that key is reserved by jekyll-seo-tag (site.social.name /
+# site.social.links, surfaced as JSON-LD sameAs) and a flat github/twitter/
+# linkedin/email hash under that name silently shadowed it.
+contact:
+  github: xchopath
+  twitter: xchopath
+  linkedin: xchopath
+  email: xchopath@wearehackerone.com
+
+# jekyll-seo-tag: Twitter Card + JSON-LD sameAs (see contact: comment above)
+twitter:
+  username: xchopath
+  card: summary_large_image
+social:
+  name: Flawseekr
+  links:
+    - https://github.com/xchopath
+    - https://x.com/xchopath
+    - https://linkedin.com/company/xchopath
+
+# ---------------------------------------------------------------------------
+#  Third-party integrations
+#  Both only render when JEKYLL_ENV=production (see head.html / article.html),
+#  so local `jekyll serve` never pings GA or spins up a Disqus thread.
+# ---------------------------------------------------------------------------
+google_analytics: "G-S22PVTFY1K"
+disqus_username: flawseekr
+
+# ---------------------------------------------------------------------------
+#  Build settings
+# ---------------------------------------------------------------------------
+markdown: kramdown
+highlighter: rouge
+permalink: pretty
+
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+sass:
+  style: compressed
+  sass_dir: _sass
+
+# ---------------------------------------------------------------------------
+#  Collections — articles live here (best practice: keep them separate)
+# ---------------------------------------------------------------------------
+collections:
+  blog:
+    output: true
+    permalink: /blog/:name/
+
+# ---------------------------------------------------------------------------
+#  Front-matter defaults
+#  NOTE: intentionally scoped to the `blog` collection only. A broad
+#  catch-all `layout` default would also wrap assets/css/main.scss in a
+#  layout and break the CSS — every page sets its own layout instead.
+# ---------------------------------------------------------------------------
+defaults:
+  - scope:
+      path: ""
+      type: blog
+    values:
+      layout: article
+  # Fallback Open Graph/Twitter card image for any page/post that doesn't
+  # set its own `image:` front matter (e.g. blog posts with a diagram).
+  - scope:
+      path: ""
+    values:
+      image: /assets/img/og-default.png
+
+# ---------------------------------------------------------------------------
+#  Navigation (rendered in the header)
+# ---------------------------------------------------------------------------
+nav:
+  - title: Home
+    url: /
+  - title: Who We Are
+    url: /about/
+  - title: Blog
+    url: /blog/
+  - title: Contact
+    url: /contact/
+
+# ---------------------------------------------------------------------------
+#  Plugins
+# ---------------------------------------------------------------------------
+plugins:
+  - jekyll-seo-tag
+  - jekyll-sitemap
+# Note: the Atom feed is a hand-written template (feed.xml) over the
+# `blog` collection — jekyll-feed only feeds `_posts`, and pointing it at
+# a collection collides with its default /feed.xml.
+
+# ---------------------------------------------------------------------------
+#  Exclude from build
+# ---------------------------------------------------------------------------
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - vendor
+  - node_modules
+  - README.md
+  - LICENSE
+  - design-plans
+  - .sass-cache
+  - .jekyll-cache

@@ -1,0 +1,21 @@
+---
+layout: null
+permalink: /search.json
+sitemap: false
+---
+[
+  {%- assign posts = site.blog | sort: "date" | reverse -%}
+  {%- for a in posts -%}
+  {
+    "title": {{ a.title | jsonify }},
+    "url": {{ a.url | relative_url | jsonify }},
+    "description": {{ a.description | default: a.excerpt | strip_html | strip_newlines | truncate: 200 | jsonify }},
+    "author": {{ a.author | jsonify }},
+    "author_name": {{ site.data.authors[a.author].name | default: a.author | jsonify }},
+    "category": {{ a.category | jsonify }},
+    "tags": {{ a.tags | jsonify }},
+    "date": {{ a.date | date: "%b %-d, %Y" | jsonify }},
+    "read_time": {{ a.read_time | default: 0 }}
+  }{%- unless forloop.last -%},{%- endunless -%}
+  {%- endfor -%}
+]

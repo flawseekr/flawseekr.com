@@ -1,0 +1,26 @@
+// ===========================================================================
+//  Self-hosted fonts — variable-font files, latin subset only.
+//  Swapped in for the Google Fonts CDN: avoids a third-party request (and,
+//  for EU visitors, sending their IP to Google before consent) and removes
+//  a DNS/TLS round trip. Both files are true variable fonts (confirmed via
+//  fvar table), so ONE file per family covers its whole weight range —
+//  no need for a static file per weight.
+// ===========================================================================
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("/assets/fonts/jetbrains-mono-variable.woff2") format("woff2-variations"),
+       url("/assets/fonts/jetbrains-mono-variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("/assets/fonts/space-grotesk-variable.woff2") format("woff2-variations"),
+       url("/assets/fonts/space-grotesk-variable.woff2") format("woff2");
+}

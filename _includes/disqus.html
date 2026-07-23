@@ -1,0 +1,10 @@
+{%- if site.disqus_username and jekyll.environment == "production" -%}
+<section class="comments">
+  <div id="disqus_thread"
+       data-disqus-shortname="{{ site.disqus_username }}"
+       data-page-url="{{ page.url | absolute_url }}"
+       data-page-id="{{ page.url | absolute_url }}">
+    <p class="comments__prompt muted">Loading comments…</p>
+  </div>
+</section>
+{%- endif -%}
