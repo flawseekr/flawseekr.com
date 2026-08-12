@@ -46,37 +46,52 @@ function hex(a){return Array.from(a,function(b){return b.toString(16).padStart(2
 function b64u(a){return btoa(String.fromCharCode.apply(null,a)).replace(/=/g,"").replace(/\+/g,"-").replace(/\//g,"_")}
 function sha256(s){return crypto.subtle.digest("SHA-256",new TextEncoder().encode(s)).then(function(h){return b64u(new Uint8Array(h))})}
 
-// bridge
 function call(mod,method,params,cb){
   var name=mod+"_"+method+"Callback_"+Date.now();
   window[name]=function(r){cb(r);delete window[name]};
   window[mod][method](JSON.stringify({callback:name,method:method,module:mod,parameters:params||{}}));
 }
 
-var scopes=[
-  ["identity","authorize"],["checkout","triggerCheckout"],["profile","fetchEmail"],
-  ["profile","verifyEmail"],["network","send"],["location","getCoordinate"],
-  ["location","getCountryCode"],["storage","setString"],["storage","getString"],
-  ["container","getSessionParams"],["container","sendAnalyticsEvent"],
-  ["camera","scanQRCode"],["device","isEsimSupported"],["file","downloadFile"]
+var bridges=[
+  ["StorageModule","getString",{key:"grab_platform_session_v2"}],
+  ["StorageModule","getString",{key:"grab_platform_session_v1"}],
+  ["StorageModule","getString",{key:"grab_platform_pending_auth_v2"}],
+  ["StorageModule","getString",{key:"grab_platform_auth_issue_v2"}],
+  ["StorageModule","getString",{key:"grab_auth_token"}],
+  ["StorageModule","getString",{key:"grab_auth_expiry"}],
+  ["StorageModule","getBoolean",{key:"hello_ride:grabIdAgree"}],
+  ["StorageModule","getString",{key:"mock_auth_recent_games"}],
+  ["StorageModule","getString",{key:"playsout_gems"}],
+  ["ContainerModule","getSessionParams",{}],
+  ["LocationModule","getCoordinate",{}],
+  ["LocationModule","getCountryCode",{}],
+  ["ProfileModule","fetchEmail",{}],
+  ["ProfileModule","verifyEmail",{}],
+  ["DeviceModule","isEsimSupported",{}],
+  ["LocaleModule","getLanguageLocaleIdentifier",{}],
+  ["CheckoutModule","triggerCheckout",{}],
+  ["NetworkModule","send",{endpoint:"https://api.grab.com/grabid/v1/oauth2/userInfo",method:"GET"}],
+  ["CameraModule","scanQRCode",{}],
+  ["IdentityModule","authorize",{clientId:cid||"",redirectUri:location.href,scope:"openid",environment:"production",responseMode:"in_place"}],
 ];
 
 function probe(){
   var p=document.getElementById("p");
-  p.textContent="[1] ScopeModule.reloadScopes...\n";
-  call("ScopeModule","reloadScopes",{},function(r){
-    p.textContent+="    → "+r.status_code+"\n\n[2] hasAccessTo:\n";
-    var i=0;
-    function next(){
-      if(i>=scopes.length)return;
-      var s=scopes[i];i++;
-      call("ScopeModule","hasAccessTo",{module:s[0],method:s[1]},function(r){
-        var ok=r.status_code===200&&r.result===true;
-        p.textContent+=(ok?"  ✓ ":"  ✗ ")+s[0]+"."+s[1]+" → "+(ok?"GRANTED":r.status_code)+"\n";
+  p.textContent="";
+  var i=0;
+  function next(){
+    if(i>=bridges.length)return;
+    var b=bridges[i];i++;
+    try{
+      call(b[0],b[1],b[2],function(r){
+        p.textContent+=b[0]+"."+b[1]+(b[2].key?"("+b[2].key+")":"")+"\n  → "+r.status_code+": "+(r.result||r.error||"")+"\n\n";
         next();
       });
+    }catch(e){
+      p.textContent+=b[0]+"."+b[1]+" → ERROR: "+e.message+"\n\n";
+      next();
     }
-    next();
-  });
+  }
+  next();
 }
 </script>
