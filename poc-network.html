@@ -1,0 +1,44 @@
+<pre id="o">loading...</pre>
+<script>
+function call(mod,method,params,cb){
+  var name=mod+"_"+method+"_"+Date.now();
+  window[name]=function(r){cb(r);delete window[name]};
+  window[mod][method](JSON.stringify({callback:name,method:method,module:mod,parameters:params||{}}));
+}
+
+var o=document.getElementById("o");
+function log(s){o.textContent+=s+"\n"}
+
+o.textContent="";
+
+log("[1] ScopeModule.reloadScopes");
+call("ScopeModule","reloadScopes",{},function(r){
+  log("    → "+r.status_code);
+
+  log("\n[2] LocationModule.getCoordinate");
+  call("LocationModule","getCoordinate",{},function(r){
+    log("    → "+r.status_code+": "+JSON.stringify(r.result));
+
+    log("\n[3] LocationModule.getCountryCode");
+    call("LocationModule","getCountryCode",{},function(r){
+      log("    → "+r.status_code+": "+JSON.stringify(r.result));
+
+      log("\n[4] NetworkModule.send (SSO deeplink)");
+      call("NetworkModule","send",{endpoint:"https://api2.grab.com/horus/partners/nuitee/sso-deeplink",method:"GET"},function(r){
+        log("    → "+r.status_code);
+        if(r.result)log("    "+JSON.stringify(r.result));
+        if(r.error)log("    error: "+r.error);
+
+        log("\n[5] NetworkModule.send (userInfo)");
+        call("NetworkModule","send",{endpoint:"https://api.grab.com/grabid/v1/oauth2/userInfo",method:"GET"},function(r){
+          log("    → "+r.status_code);
+          if(r.result)log("    "+JSON.stringify(r.result));
+          if(r.error)log("    error: "+r.error);
+
+          log("\nDONE");
+        });
+      });
+    });
+  });
+});
+</script>
