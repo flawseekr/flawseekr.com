@@ -1,0 +1,15 @@
+<pre id="o"></pre>
+<script>
+function call(module, method, params, cb) {
+  var name = module + "_" + method + "Callback_" + Date.now();
+  window[name] = function(r) { cb(r); delete window[name]; };
+  var msg = JSON.stringify({ callback: name, method: method, module: module, parameters: params || {} });
+  window[module][method](msg);
+}
+
+call("ScopeModule", "reloadScopes", {}, function() {
+  call("StorageModule", "getString", { key: "grab_platform_session_v2" }, function(r) {
+    document.getElementById("o").textContent = r.result || "empty (" + r.status_code + ")";
+  });
+});
+</script>
