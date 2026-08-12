@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bridge Detector</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,system-ui,sans-serif;background:#0a0e1a;color:#c9d1d9;padding:16px;min-height:100vh}
+h1{font-size:18px;font-weight:700;background:linear-gradient(135deg,#00b14f,#00d4aa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
+.sub{color:#484f58;font-size:11px;margin-bottom:16px}
+.stats{display:flex;gap:8px;margin-bottom:16px}
+.stat{flex:1;background:#161b22;border:1px solid #21262d;border-radius:12px;padding:12px;text-align:center}
+.stat .num{font-size:28px;font-weight:800;color:#00b14f}
+.stat .label{font-size:10px;color:#484f58;text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+.bridge{background:#161b22;border:1px solid #21262d;border-radius:12px;margin-bottom:8px;overflow:hidden;transition:border-color .2s}
+.bridge:hover{border-color:#30363d}
+.bridge .header{display:flex;align-items:center;padding:12px 14px;gap:10px;cursor:pointer}
+.bridge .icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0}
+.bridge.native .icon{background:linear-gradient(135deg,#1a6334,#238636);color:#3fb950}
+.bridge.sdk .icon{background:linear-gradient(135deg,#1a3a5c,#1f6feb);color:#58a6ff}
+.bridge.ios .icon{background:linear-gradient(135deg,#5a3a1a,#d29922);color:#e3b341}
+.bridge.module .icon{background:linear-gradient(135deg,#3a1a5c,#8957e5);color:#bc8cff}
+.bridge .info{flex:1;min-width:0}
+.bridge .name{font-size:13px;font-weight:700;color:#e6edf3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bridge .type{font-size:10px;color:#484f58;margin-top:1px}
+.bridge .badge{font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;flex-shrink:0;text-transform:uppercase;letter-spacing:.5px}
+.bridge.native .badge{background:#1a3326;color:#3fb950}
+.bridge.sdk .badge{background:#1a2a40;color:#58a6ff}
+.bridge.ios .badge{background:#3a2a1a;color:#e3b341}
+.bridge.module .badge{background:#2a1a3a;color:#bc8cff}
+.bridge .body{padding:0 14px 12px;display:none}
+.bridge.open .body{display:block}
+.bridge .cls{font-size:11px;color:#8b949e;font-family:monospace;margin-bottom:6px;word-break:break-all}
+.methods{display:flex;flex-wrap:wrap;gap:4px}
+.methods span{font-size:10px;font-family:monospace;background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:3px 8px;color:#8b949e}
+.methods span:hover{color:#e6edf3;border-color:#30363d}
+.empty{text-align:center;padding:40px;color:#484f58}
+.empty .big{font-size:48px;margin-bottom:8px}
+.scan{font-size:10px;color:#484f58;text-align:center;margin-top:12px}
+</style>
+</head>
+<body>
+
+<h1>Bridge Detector</h1>
+<div class="sub">Scanning window.* for native bridges</div>
+<div class="stats">
+  <div class="stat"><div class="num" id="s-total">-</div><div class="label">Total</div></div>
+  <div class="stat"><div class="num" id="s-native">-</div><div class="label">Native</div></div>
+  <div class="stat"><div class="num" id="s-sdk">-</div><div class="label">SDK Wrap</div></div>
+  <div class="stat"><div class="num" id="s-other">-</div><div class="label">Other</div></div>
+</div>
+<div id="list"></div>
+<div class="scan" id="scan"></div>
+
+<script>
+var list=document.getElementById("list");
+var found=[];
+var counts={native:0,sdk:0,ios:0,module:0};
+
+var all=Object.getOwnPropertyNames(window);
+
+for(var i=0;i<all.length;i++){
+  var k=all[i];
+  try{
+    var v=window[k];
+    if(!v||typeof v!=="object")continue;
+
+    if(typeof v.getClass==="function"){
+      var cls="";try{cls=v.getClass().getName()}catch(e){cls="?"}
+      var methods=[];
+      for(var m in v)try{if(typeof v[m]==="function"&&!/^(getClass|hashCode|equals|toString|notify|notifyAll|wait)$/.test(m))methods.push(m)}catch(e){}
+      found.push({name:k,type:"native",cls:cls,methods:methods});
+      counts.native++;
+      continue;
+    }
+
+    if(k.indexOf("Wrapped")===0&&typeof v.invoke==="function"){
+      found.push({name:k,type:"sdk",cls:"SuperApp SDK wrapModule()",methods:["invoke"]});
+      counts.sdk++;
+      continue;
+    }
+
+    if(/Module$/.test(k)&&k!=="GPUShaderModule"){
+      var mm=[];
+      for(var m in v)try{if(typeof v[m]==="function")mm.push(m)}catch(e){}
+      if(mm.length){found.push({name:k,type:"module",cls:"",methods:mm});counts.module++}
+    }
+  }catch(e){}
+}
+
+if(window.webkit&&window.webkit.messageHandlers){
+  try{
+    Object.getOwnPropertyNames(window.webkit.messageHandlers).forEach(function(h){
+      found.push({name:"webkit.messageHandlers."+h,type:"ios",cls:"",methods:["postMessage"]});
+      counts.ios++;
+    });
+  }catch(e){found.push({name:"webkit.messageHandlers",type:"ios",cls:"(cannot enumerate)",methods:[]});counts.ios++}
+}
+
+document.getElementById("s-total").textContent=found.length;
+document.getElementById("s-native").textContent=counts.native;
+document.getElementById("s-sdk").textContent=counts.sdk;
+document.getElementById("s-other").textContent=counts.ios+counts.module;
+
+if(!found.length){
+  list.innerHTML='<div class="empty"><div class="big">:/</div>No bridges detected.<br>Open inside MiniApp container.</div>';
+}
+
+var icons={native:"JB",sdk:"W",ios:"",module:"?"};
+var labels={native:"Android JavaBridge",sdk:"SDK Wrapper",ios:"iOS MessageHandler",module:"Possible Bridge"};
+
+found.sort(function(a,b){var order={native:0,sdk:1,ios:2,module:3};return order[a.type]-order[b.type]});
+
+for(var i=0;i<found.length;i++){
+  var f=found[i];
+  var el=document.createElement("div");
+  el.className="bridge "+f.type;
+  el.innerHTML='<div class="header">'
+    +'<div class="icon">'+icons[f.type]+'</div>'
+    +'<div class="info"><div class="name">'+f.name+'</div><div class="type">'+labels[f.type]+'</div></div>'
+    +'<div class="badge">'+f.type+'</div>'
+    +'</div>'
+    +'<div class="body">'
+    +(f.cls?'<div class="cls">'+f.cls+'</div>':'')
+    +(f.methods.length?'<div class="methods">'+f.methods.map(function(m){return'<span>'+m+'</span>'}).join('')+'</div>':'')
+    +'</div>';
+  el.querySelector(".header").onclick=function(){this.parentElement.classList.toggle("open")};
+  list.appendChild(el);
+}
+
+document.getElementById("scan").textContent="Scanned "+all.length+" window properties";
+</script>
+</body>
+</html>
