@@ -462,7 +462,7 @@
       document.getElementById("s-sdk").textContent = counts.sdk;
       document.getElementById("s-other").textContent = counts.ios + counts.module;
       if (!found.length) {
-        list.innerHTML = ' < div class = "empty" > < div class = "icon" > & #x1f50d; < /div>' + ' < p > No bridges detected. < br > Open this page inside a MiniApp container < br > ' + 'to see injected native bridges. < /p> < /div>';
+        list.innerHTML = ' <div class="empty"> <div class="icon"> & #x1f50d; </div>' + ' <p> No bridges detected. <br> Open this page inside a WebView container <br> ' + 'to see injected native bridges. </p> </div>';
       }
       var order = {
         native: 0,
@@ -489,7 +489,7 @@
         var f = found[i];
         var el = document.createElement("div");
         el.className = "bridge " + f.type;
-        el.innerHTML = ' < div class = "hdr" > ' + ' < div class = "dot" > ' + icons[f.type] + ' < /div>' + ' < div class = "info" > ' + ' < div class = "name" > ' + f.name + ' < /div>' + ' < div class = "desc" > ' + f.desc + ' < /div>' + ' < /div>' + ' < div class = "tag" > ' + labels[f.type] + ' < /div>' + ' < div class = "arrow" > ▶ < /div>' + ' < /div>' + ' < div class = "body" > ' + (f.cls ? ' < div class = "cls" > ' + f.cls + ' < /div>' : '') + (f.methods.length ? ' < div class = "methods" > ' + f.methods.map(function(m){return ' < span > '+m+' < /span>'}).join('') + ' < /div>' : '') + ' < /div>';
+        el.innerHTML = ' <div class = "hdr"> ' + ' <div class="dot"> ' + icons[f.type] + ' </div>' + ' <div class="info"> ' + ' <div class="name"> ' + f.name + ' </div>' + ' <div class="desc"> ' + f.desc + ' </div>' + ' </div>' + ' <div class="tag"> ' + labels[f.type] + ' </div>' + ' <div class="arrow"> ▶ </div>' + ' </div>' + ' <div class="body"> ' + (f.cls ? ' <div class="cls"> ' + f.cls + ' </div>' : '') + (f.methods.length ? ' <div class="methods"> ' + f.methods.map(function(m){return ' <span> '+m+' </span>'}).join('') + ' </div>' : '') + ' </div>';
           el.querySelector(".hdr").addEventListener("click", function() {
             this.parentElement.classList.toggle("open");
           }); list.appendChild(el);
