@@ -1,7 +1,7 @@
 // XSS to ATO Grab Services
 
-var GRAB_BUSINESS_EMAIL = "xchopath+h1testing@wearehackerone.com";
-var GRAB_MERCHANT_EMAIL = "xchopath+h1testing@wearehackerone.com";
+var GRAB_BUSINESS_EMAIL = "xchopath+unique1@wearehackerone.com";
+var GRAB_MERCHANT_EMAIL = "xchopath@wearehackerone.com";
 
 // Helper
 function print(title, data) {
