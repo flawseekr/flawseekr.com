@@ -1,1 +1,38 @@
-<script>document.write(Object.keys(window).join("\n"))</script>
+<script>
+var out = '';
+
+out += '=== webViewCallback ===\n';
+try { out += Object.keys(window.webViewCallback).join('\n'); }
+catch(e) { out += 'NOT AVAILABLE: ' + e.message; }
+
+out += '\n\n=== flutter_inappwebview ===\n';
+try { out += Object.keys(window.flutter_inappwebview).join('\n'); }
+catch(e) { out += 'NOT AVAILABLE: ' + e.message; }
+
+out += '\n\n=== webViewCallback deep ===\n';
+try { out += Object.getOwnPropertyNames(window.webViewCallback).join('\n'); }
+catch(e) {}
+
+out += '\n\n=== flutter_inappwebview deep ===\n';
+try { out += Object.getOwnPropertyNames(window.flutter_inappwebview).join('\n'); }
+catch(e) {}
+
+out += '\n\n=== webViewCallback proto ===\n';
+try { out += Object.getOwnPropertyNames(Object.getPrototypeOf(window.webViewCallback)).join('\n'); }
+catch(e) {}
+
+out += '\n\n=== flutter_inappwebview proto ===\n';
+try { out += Object.getOwnPropertyNames(Object.getPrototypeOf(window.flutter_inappwebview)).join('\n'); }
+catch(e) {}
+
+out += '\n\n=== cookies ===\n';
+out += document.cookie.split(';').join('\n');
+
+out += '\n\n=== localStorage ===\n';
+for (var i = 0; i < localStorage.length; i++) {
+  var k = localStorage.key(i);
+  out += k + ' = ' + localStorage.getItem(k) + '\n';
+}
+
+document.write('<pre>' + out + '</pre>');
+</script>
