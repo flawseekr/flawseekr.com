@@ -1,0 +1,272 @@
+<script>
+// ================================================================
+// SWEEP ALL BRIDGES — mex-supplier.grab.com / Grab Merchant WebView
+//
+// Evidence sources:
+//   flutter_inappwebview handlers:
+//     - FlutterBridge.ts (mex-mobile-web source map, module 35900)
+//     - libapp.so (Dart binary, string extraction)
+//     - _app-3c884386300635ef.js (HelpCenterBridge JS injection)
+//
+//   webViewCallback actions:
+//     - Module 41764 in _app-3c884386300635ef.js
+//     - Module 71986 (bridge send/receive protocol)
+// ================================================================
+
+var R = [];
+function p(label, val) {
+  var s = label + ' = ' + (typeof val === 'object' ? JSON.stringify(val, null, 2) : String(val));
+  R.push(s);
+}
+function h(title) { R.push('\n========== ' + title + ' =========='); }
+
+// ================================================================
+// BRIDGE 1: flutter_inappwebview.callHandler
+// ================================================================
+h('flutter_inappwebview.callHandler');
+
+if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === 'function') {
+  p('STATUS', 'AVAILABLE');
+
+  // Confirmed handlers from source:
+  // - grabToken: FlutterBridge.ts MexAppHandlers.GRAB_TOKEN
+  // - grabProfile: FlutterBridge.ts MexAppHandlers.GRAB_PROFILE
+  // - trackGXSLandingPageOpen: FlutterBridge.ts MexAppHandlers.TRACK_GXS_PAGE_OPENED
+  // - trackGXSLandingPageTapApply: FlutterBridge.ts MexAppHandlers.TRACK_GXS_PAGE_TAP_APPLY
+  // - trackGXSLandingPageTapGetInTouch: FlutterBridge.ts MexAppHandlers.TRACK_GXS_PAGE_TAP_GET_IN_TOUCH
+  // - HelpCenterBridge: JS injected in libapp.so → callHandler('HelpCenterBridge', ticketId)
+  //
+  // Candidates from libapp.so string extraction:
+  // - getAuthToken, setAuthToken, getJWT, getDeviceId, getSessionId
+  // - getAppVersion, getUserAgent, getLocationData, closeWebview
+
+  var handlers = [
+    // Source: FlutterBridge.ts (confirmed)
+    { name: 'grabToken',       args: [],     src: 'FlutterBridge.ts MexAppHandlers.GRAB_TOKEN' },
+    { name: 'grabProfile',     args: [],     src: 'FlutterBridge.ts MexAppHandlers.GRAB_PROFILE' },
+
+    // Source: JS injection in libapp.so (confirmed)
+    { name: 'HelpCenterBridge', args: ['test'], src: 'libapp.so JS: callHandler("HelpCenterBridge", ticketId)' },
+
+    // Source: libapp.so string extraction (candidates)
+    { name: 'getAuthToken',    args: [],     src: 'libapp.so string' },
+    { name: 'setAuthToken',    args: [],     src: 'libapp.so string' },
+    { name: 'getJWT',          args: [],     src: 'libapp.so string' },
+    { name: 'getDeviceId',     args: [],     src: 'libapp.so string' },
+    { name: 'getSessionId',    args: [],     src: 'libapp.so string' },
+    { name: 'getAppVersion',   args: [],     src: 'libapp.so string' },
+    { name: 'getUserAgent',    args: [],     src: 'libapp.so string' },
+    { name: 'getLocationData', args: [],     src: 'libapp.so string' },
+    { name: 'closeWebview',    args: [],     src: 'libapp.so string' },
+
+    // Source: FlutterBridge.ts tracking handlers (confirmed)
+    { name: 'trackGXSLandingPageOpen',          args: [], src: 'FlutterBridge.ts' },
+    { name: 'trackGXSLandingPageTapApply',      args: [], src: 'FlutterBridge.ts' },
+    { name: 'trackGXSLandingPageTapGetInTouch',  args: [], src: 'FlutterBridge.ts' },
+  ];
+
+  var pending = handlers.length;
+
+  handlers.forEach(function(handler) {
+    try {
+      var promise = window.flutter_inappwebview.callHandler.apply(
+        window.flutter_inappwebview,
+        [handler.name].concat(handler.args)
+      );
+
+      if (promise && typeof promise.then === 'function') {
+        promise.then(function(result) {
+          p('[OK] ' + handler.name + ' (' + handler.src + ')', result);
+          pending--;
+          if (pending <= 0) flush();
+        }).catch(function(err) {
+          p('[ERR] ' + handler.name + ' (' + handler.src + ')', String(err));
+          pending--;
+          if (pending <= 0) flush();
+        });
+      } else {
+        p('[SYNC] ' + handler.name + ' (' + handler.src + ')', promise);
+        pending--;
+      }
+    } catch(e) {
+      p('[EXCEPTION] ' + handler.name + ' (' + handler.src + ')', e.message);
+      pending--;
+    }
+  });
+
+  // Timeout: if handlers don't resolve in 5s, flush anyway
+  setTimeout(function() { if (pending > 0) { p('TIMEOUT', pending + ' handlers did not resolve'); flush(); } }, 5000);
+
+} else {
+  p('STATUS', 'NOT AVAILABLE');
+}
+
+// ================================================================
+// BRIDGE 2: webViewCallback.postMessage
+// ================================================================
+h('webViewCallback.postMessage');
+
+if (window.webViewCallback && typeof window.webViewCallback.postMessage === 'function') {
+  p('STATUS', 'AVAILABLE');
+  p('keys', Object.keys(window.webViewCallback));
+
+  // Source: Module 41764 in _app-3c884386300635ef.js
+  // Actions: EXIT, BACK, DETECT_ADDRESS
+  // Protocol (Module 71986):
+  //   1. postMessage(JSON.stringify({action, scope:"MEX"}))
+  //   2. Only DETECT_ADDRESS expects response via onmessage
+  //   3. onmessage receives JSON.parse(event.data)
+  //   4. EventEmitter matches on event.type === action name
+  //   5. Resolver gets event.data
+
+  // Save original onmessage
+  var origOnmessage = window.webViewCallback.onmessage;
+
+  // Install interceptor to capture response
+  window.webViewCallback.onmessage = function(event) {
+    try {
+      var data = JSON.parse(event.data);
+      p('[RECV] onmessage type=' + data.type, data);
+    } catch(e) {
+      p('[RECV] onmessage (raw)', event.data);
+    }
+    // Forward to original handler if exists
+    if (origOnmessage) origOnmessage(event);
+  };
+
+  // Send DETECT_ADDRESS (the only action that returns data)
+  // Source: Module 71986, function v(e)
+  //   d = [WEB_VIEW_ACTION_DETECT_ADDRESS] ← only this gets Promise
+  var detectPayload = JSON.stringify({ action: 'DETECT_ADDRESS', scope: 'MEX' });
+  p('[SEND] DETECT_ADDRESS', detectPayload);
+  window.webViewCallback.postMessage(detectPayload);
+
+  // Also log the other actions (fire-and-forget, no response expected)
+  p('[INFO] EXIT', 'fire-and-forget (no response)');
+  p('[INFO] BACK', 'fire-and-forget (no response)');
+
+  // Wait for response or timeout
+  setTimeout(function() {
+    p('[INFO] DETECT_ADDRESS', '5s window passed — check [RECV] above for response');
+  }, 5500);
+
+} else {
+  p('STATUS', 'NOT AVAILABLE');
+}
+
+// ================================================================
+// BRIDGE 3: webViewCallback.addEventListener
+// ================================================================
+h('webViewCallback.addEventListener');
+
+if (window.webViewCallback && typeof window.webViewCallback.addEventListener === 'function') {
+  p('STATUS', 'AVAILABLE');
+
+  // Listen for any events the native side might send
+  var eventTypes = ['message', 'token', 'auth', 'location', 'error', 'close', 'data'];
+  eventTypes.forEach(function(type) {
+    try {
+      window.webViewCallback.addEventListener(type, function(event) {
+        p('[EVENT] ' + type, typeof event.data !== 'undefined' ? event.data : event);
+      });
+      p('[LISTEN] ' + type, 'registered');
+    } catch(e) {
+      p('[LISTEN] ' + type, 'FAILED: ' + e.message);
+    }
+  });
+} else {
+  p('STATUS', 'NOT AVAILABLE');
+}
+
+// ================================================================
+// BRIDGE 4: flutter_inappwebview._callHandler (internal)
+// ================================================================
+h('flutter_inappwebview._callHandler');
+
+if (window.flutter_inappwebview && typeof window.flutter_inappwebview._callHandler === 'function') {
+  p('STATUS', 'AVAILABLE');
+  p('typeof', typeof window.flutter_inappwebview._callHandler);
+  // Don't call it blindly — log that it exists
+} else {
+  p('STATUS', 'NOT AVAILABLE');
+}
+
+// ================================================================
+// BRIDGE 5: flutter_inappwebview._Util
+// ================================================================
+h('flutter_inappwebview._Util');
+
+if (window.flutter_inappwebview && window.flutter_inappwebview._Util) {
+  p('STATUS', 'AVAILABLE');
+  try {
+    p('keys', Object.keys(window.flutter_inappwebview._Util));
+    p('methods', Object.getOwnPropertyNames(window.flutter_inappwebview._Util));
+  } catch(e) {
+    p('inspect error', e.message);
+  }
+} else {
+  p('STATUS', 'NOT AVAILABLE');
+}
+
+// ================================================================
+// BRIDGE 6: window.notifyMobile (injected by Dart for HelpCenter)
+// ================================================================
+h('window.notifyMobile');
+
+// Source: libapp.so JS injection:
+//   window.notifyMobile = function(ticketId) {
+//     window.flutter_inappwebview.callHandler('HelpCenterBridge', ticketId);
+//   };
+if (typeof window.notifyMobile === 'function') {
+  p('STATUS', 'AVAILABLE (injected by Dart)');
+} else {
+  p('STATUS', 'NOT AVAILABLE (only injected on HelpCenter pages)');
+}
+
+// ================================================================
+// BRIDGE 7: window.appContext (injected by Dart for HelpCenter)
+// ================================================================
+h('window.appContext');
+
+// Source: libapp.so JS injection:
+//   window.appContext = window.appContext || {};
+//   window.appContext.source = ...
+if (window.appContext) {
+  p('STATUS', 'AVAILABLE');
+  p('value', window.appContext);
+} else {
+  p('STATUS', 'NOT AVAILABLE');
+}
+
+// ================================================================
+// FULL BRIDGE OBJECT DUMP
+// ================================================================
+h('RAW BRIDGE DUMP');
+
+if (window.webViewCallback) {
+  p('webViewCallback.keys', Object.keys(window.webViewCallback));
+  p('webViewCallback.ownProps', Object.getOwnPropertyNames(window.webViewCallback));
+  try { p('webViewCallback.proto', Object.getOwnPropertyNames(Object.getPrototypeOf(window.webViewCallback))); } catch(e) {}
+}
+
+if (window.flutter_inappwebview) {
+  p('flutter_inappwebview.keys', Object.keys(window.flutter_inappwebview));
+  p('flutter_inappwebview.ownProps', Object.getOwnPropertyNames(window.flutter_inappwebview));
+  try { p('flutter_inappwebview.proto', Object.getOwnPropertyNames(Object.getPrototypeOf(window.flutter_inappwebview))); } catch(e) {}
+}
+
+// ================================================================
+// OUTPUT
+// ================================================================
+function flush() {
+  document.open();
+  document.write('<pre>' + R.join('\n') + '</pre>');
+  document.close();
+}
+
+// If no async handlers, flush immediately
+if (!window.flutter_inappwebview || typeof window.flutter_inappwebview.callHandler !== 'function') {
+  flush();
+}
+// Otherwise flush is called by handler resolution or 5s timeout
+</script>
