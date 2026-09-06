@@ -1,0 +1,116 @@
+<script>
+
+var R = [];
+
+// Step 1: Collect baseline from clean iframe
+var iframe = document.createElement('iframe');
+iframe.style.display = 'none';
+iframe.src = 'about:blank';
+document.documentElement.appendChild(iframe);
+
+setTimeout(function() {
+  var baseline = new Set();
+
+  try {
+    var iwin = iframe.contentWindow;
+    // Combine for..in and getOwnPropertyNames for full coverage
+    for (var k in iwin) baseline.add(k);
+    Object.getOwnPropertyNames(iwin).forEach(function(k) { baseline.add(k); });
+    // Also walk prototype chain
+    var proto = Object.getPrototypeOf(iwin);
+    while (proto) {
+      Object.getOwnPropertyNames(proto).forEach(function(k) { baseline.add(k); });
+      proto = Object.getPrototypeOf(proto);
+    }
+  } catch(e) {
+    R.push('[WARN] baseline collection failed: ' + e.message);
+  }
+  document.documentElement.removeChild(iframe);
+
+  // Step 2: Collect current window properties (same technique)
+  var current = new Set();
+  for (var k in window) current.add(k);
+  Object.getOwnPropertyNames(window).forEach(function(k) { current.add(k); });
+
+  // Step 3: Diff — find non-default (injected) properties
+  var injected = [];
+  current.forEach(function(key) {
+    if (!baseline.has(key)) {
+      injected.push(key);
+    }
+  });
+
+  R.push('BASELINE: ' + baseline.size + ' properties');
+  R.push('CURRENT:  ' + current.size + ' properties');
+  R.push('INJECTED: ' + injected.length + ' non-default properties\n');
+
+  // Step 4: Deep inspect each injected property
+  injected.sort().forEach(function(key) {
+    try {
+      var val = window[key];
+      var type = val === null ? 'null' : typeof val;
+
+      R.push('window.' + key + '  [' + type + ']');
+
+      if (val === null || val === undefined) {
+        R.push('  = ' + String(val));
+      }
+      else if (type === 'function') {
+        R.push('  = ' + String(val).substring(0, 120));
+      }
+      else if (type === 'boolean' || type === 'number' || type === 'string') {
+        R.push('  = ' + JSON.stringify(val).substring(0, 200));
+      }
+      else if (type === 'object') {
+        // Deep inspect: enumerate all own properties + methods
+        var ownKeys = Object.getOwnPropertyNames(val);
+        R.push('  OwnPropertyNames: [' + ownKeys.join(', ') + ']');
+
+        // Enumerate prototype methods
+        try {
+          var proto = Object.getPrototypeOf(val);
+          if (proto && proto !== Object.prototype) {
+            var protoKeys = Object.getOwnPropertyNames(proto);
+            R.push('  Prototype: [' + protoKeys.join(', ') + ']');
+          }
+        } catch(e) {}
+
+        // For each property, show type and value preview
+        ownKeys.forEach(function(prop) {
+          try {
+            var pval = val[prop];
+            var ptype = pval === null ? 'null' : typeof pval;
+
+            if (ptype === 'function') {
+              // Check if it's native code (bridge method) vs JS function
+              var src = String(pval);
+              var isNative = src.includes('[native code]');
+              R.push('    .' + prop + '()  ' + (isNative ? '[NATIVE]' : '[JS]') + '  ' + src.substring(0, 100));
+            }
+            else if (ptype === 'object' && pval !== null) {
+              // Recurse one level: show sub-properties
+              var subKeys = Object.getOwnPropertyNames(pval);
+              R.push('    .' + prop + '  [object] keys=[' + subKeys.slice(0, 15).join(', ') + (subKeys.length > 15 ? ', ...' + subKeys.length + ' total' : '') + ']');
+            }
+            else {
+              R.push('    .' + prop + '  [' + ptype + '] = ' + JSON.stringify(pval).substring(0, 100));
+            }
+          } catch(e) {
+            R.push('    .' + prop + '  [error] ' + e.message);
+          }
+        });
+      }
+
+      R.push('');
+    } catch(e) {
+      R.push('window.' + key + '  [error] ' + e.message + '\n');
+    }
+  });
+
+  // Flush
+  document.open();
+  document.write('<pre style="font-size:11px;white-space:pre-wrap;word-break:break-all">' + R.join('\n') + '</pre>');
+  document.close();
+
+}, 500);
+</script>
