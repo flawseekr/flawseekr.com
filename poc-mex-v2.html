@@ -1,0 +1,190 @@
+<script>
+// ================================================================
+// SWEEP flutter_inappwebview.callHandler
+//
+// Based on ACTUAL implementation from:
+//   mex-mobile-web.grab.com/static/index.dbb2a28aa5913801.js
+//
+// Source patterns:
+//
+//   WRAPPED (with 10s timeout):
+//     Promise.race([
+//       flutter_inappwebview.callHandler.apply(n, [handlerName].concat(args)),
+//       new Promise((resolve, reject) => {
+//         t = setTimeout(() => reject(Error("xxx timed out")), 10000)
+//       })
+//     ])
+//
+//   DIRECT (fire-and-check):
+//     window.flutter_inappwebview &&
+//       window.flutter_inappwebview.callHandler('finished')
+//
+//   Response shapes (from source destructuring):
+//     grabToken  → { token: string, isAuthenticated: boolean }
+//     grabProfile → object (returned as-is, fallback {})
+//     finished/last_seen/index_change → void (fire-and-forget)
+// ================================================================
+
+var R = [];
+var TIMEOUT = 10000; // R=1e4 from source
+
+function p(label, val) {
+  try {
+    R.push(label + ' = ' + (val === null ? 'null' : typeof val === 'object' ? JSON.stringify(val, null, 2) : String(val)));
+  } catch(e) {
+    R.push(label + ' = [error: ' + e.message + ']');
+  }
+}
+
+function h(title) { R.push('\n===== ' + title + ' ====='); }
+
+function flush() {
+  document.open();
+  document.write('<pre style="font-size:12px;white-space:pre-wrap;word-break:break-all">' + R.join('\n') + '</pre>');
+  document.close();
+}
+
+// Check bridge exists
+if (!window.flutter_inappwebview || typeof window.flutter_inappwebview.callHandler !== 'function') {
+  p('flutter_inappwebview', 'NOT AVAILABLE');
+  flush();
+} else {
+
+  // ============================================================
+  // HANDLER DEFINITIONS — from source code
+  // ============================================================
+
+  var handlers = [
+    // ---- WRAPPED handlers (KT constants, module FlutterBridge.ts) ----
+    // Source: f={GRAB_TOKEN:"grabToken", GRAB_PROFILE:"grabProfile", ...}
+    // Called via: Promise.race([(r.il)(r.KT.GRAB_TOKEN), timeout(10s)])
+    // Response: {token: n&&n.token, tokenPresent: !!(n&&n.token), bridgeAuthenticated: !!(n&&n.isAuthenticated)}
+    {
+      name: 'grabToken',
+      args: [],
+      source: 'FlutterBridge.ts KT.GRAB_TOKEN',
+      expect: '{token, isAuthenticated}'
+    },
+    // Response: n || {} (raw profile object)
+    {
+      name: 'grabProfile',
+      args: [],
+      source: 'FlutterBridge.ts KT.GRAB_PROFILE',
+      expect: 'profile object || {}'
+    },
+
+    // ---- DIRECT handlers (insights reels, module ia) ----
+    // Source: ia={FINISHED:"finished", INDEX_CHANGE:"index_change", LAST_SEEN:"last_seen"}
+    // Called via: window.flutter_inappwebview.callHandler(ia.FINISHED)
+    {
+      name: 'finished',
+      args: [],
+      source: 'InsightsReels ia.FINISHED',
+      expect: 'void (fire-and-forget)'
+    },
+    {
+      name: 'last_seen',
+      args: [{index: 0, playingDuration: 0}],
+      source: 'InsightsReels ia.LAST_SEEN({index, playingDuration})',
+      expect: 'void'
+    },
+    {
+      name: 'index_change',
+      args: [0],
+      source: 'InsightsReels ia.INDEX_CHANGE(index)',
+      expect: 'void'
+    },
+
+    // ---- WRAPPED tracking handlers (KT constants) ----
+    // Source: KT.TRACK_GXS_PAGE_OPENED, KT.TRACK_GXS_PAGE_TAP_APPLY, KT.TRACK_GXS_PAGE_TAP_GET_IN_TOUCH
+    {
+      name: 'trackGXSLandingPageOpen',
+      args: [],
+      source: 'FlutterBridge.ts KT.TRACK_GXS_PAGE_OPENED',
+      expect: 'void'
+    },
+    {
+      name: 'trackGXSLandingPageTapApply',
+      args: [],
+      source: 'FlutterBridge.ts KT.TRACK_GXS_PAGE_TAP_APPLY',
+      expect: 'void'
+    },
+    {
+      name: 'trackGXSLandingPageTapGetInTouch',
+      args: [],
+      source: 'FlutterBridge.ts KT.TRACK_GXS_PAGE_TAP_GET_IN_TOUCH',
+      expect: 'void'
+    },
+
+    // ---- HelpCenterBridge (JS injection in libapp.so) ----
+    // Source: window.flutter_inappwebview.callHandler('HelpCenterBridge', ticketId)
+    {
+      name: 'HelpCenterBridge',
+      args: ['test-ticket-id'],
+      source: 'libapp.so JS injection',
+      expect: 'void'
+    },
+  ];
+
+  // ============================================================
+  // EXECUTE — mirroring the source code patterns
+  // ============================================================
+
+  h('WRAPPED HANDLERS (Promise.race with ' + TIMEOUT + 'ms timeout)');
+
+  var pending = handlers.length;
+
+  handlers.forEach(function(handler) {
+    var startTime = Date.now();
+
+    // Mirror source: Promise.race([callHandler(...), timeout])
+    Promise.race([
+      window.flutter_inappwebview.callHandler.apply(
+        window.flutter_inappwebview,
+        [handler.name].concat(handler.args)
+      ),
+      new Promise(function(resolve, reject) {
+        setTimeout(function() {
+          reject(new Error(handler.name + ' timed out'));
+        }, TIMEOUT);
+      })
+    ]).then(function(result) {
+      var elapsed = Date.now() - startTime;
+      var label = '[' + elapsed + 'ms] ' + handler.name + '(' + handler.args.map(function(a) { return JSON.stringify(a); }).join(', ') + ')';
+
+      // Apply source-code destructuring for known handlers
+      if (handler.name === 'grabToken' && result !== null && typeof result === 'object') {
+        p(label + '.token', result.token);
+        p(label + '.isAuthenticated', result.isAuthenticated);
+        p(label + ' (raw)', result);
+      } else if (handler.name === 'grabProfile' && result !== null && typeof result === 'object') {
+        p(label + ' (profile keys)', Object.keys(result));
+        p(label + ' (raw)', result);
+      } else {
+        p(label, result);
+      }
+
+      p('  source', handler.source);
+      p('  expect', handler.expect);
+
+      pending--;
+      if (pending <= 0) flush();
+    }).catch(function(err) {
+      var elapsed = Date.now() - startTime;
+      p('[' + elapsed + 'ms] ' + handler.name + ' ERROR', String(err));
+      p('  source', handler.source);
+
+      pending--;
+      if (pending <= 0) flush();
+    });
+  });
+
+  // Safety flush
+  setTimeout(function() {
+    if (pending > 0) {
+      p('GLOBAL TIMEOUT', pending + ' handlers still pending');
+      flush();
+    }
+  }, TIMEOUT + 2000);
+}
+</script>
