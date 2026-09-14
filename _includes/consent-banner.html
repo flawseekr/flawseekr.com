@@ -1,0 +1,11 @@
+{%- if site.google_analytics or site.disqus_username -%}
+{%- if jekyll.environment == "production" -%}
+<div class="consent-banner" id="consent-banner" role="region" aria-label="Cookie preferences" hidden>
+  <p>This site can use optional analytics and Disqus comments, both of which set their own cookies. Nothing loads until you say so.</p>
+  <div class="consent-banner__actions">
+    <button type="button" class="btn btn--ghost" id="consent-decline">Decline</button>
+    <button type="button" class="btn btn--primary" id="consent-accept">Accept</button>
+  </div>
+</div>
+{%- endif -%}
+{%- endif -%}

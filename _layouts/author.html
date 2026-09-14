@@ -1,0 +1,44 @@
+---
+layout: default
+---
+{%- assign author = site.data.authors[page.username] -%}
+{%- assign posts = site.blog | where: "author", page.username | sort: "date" | reverse -%}
+<div class="wrap archive">
+  <header class="profile">
+    <div class="profile__avatar">
+      {%- if author.avatar -%}
+        <img src="{{ author.avatar | relative_url }}" alt="" width="168" height="168" loading="lazy">
+      {%- else -%}
+        <span aria-hidden="true">{{ author.name | default: page.username | slice: 0, 1 | upcase }}</span>
+      {%- endif -%}
+    </div>
+    <div class="profile__meta">
+      <p class="eyebrow">Author</p>
+      <h1 class="profile__name">{{ author.name | default: page.username }}</h1>
+      <p class="profile__handle">@{{ page.username }}</p>
+      {%- if author.bio -%}<p class="profile__bio">{{ author.bio }}</p>{%- endif -%}
+      {%- include social-links.html author=author class="profile__links" -%}
+    </div>
+  </header>
+
+  <section class="archive__list">
+    <h2 class="section-title">{{ posts.size }} post{% if posts.size != 1 %}s{% endif %}</h2>
+
+    {%- comment -%} Same layout as /blog: latest featured, then a card grid. {%- endcomment -%}
+    {%- if posts.size > 0 -%}
+    <p class="eyebrow">// latest</p>
+    {%- include article-featured.html article=posts.first -%}
+    {%- endif -%}
+
+    {%- if posts.size > 1 -%}
+    <p class="eyebrow more-writing">// more writing</p>
+    <div class="card-grid">
+      {%- for a in posts offset: 1 -%}{%- include article-card.html article=a -%}{%- endfor -%}
+    </div>
+    {%- endif -%}
+
+    {%- if posts.size == 0 -%}
+    <p class="muted">No posts yet.</p>
+    {%- endif -%}
+  </section>
+</div>

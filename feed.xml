@@ -1,0 +1,30 @@
+---
+layout: null
+permalink: /feed.xml
+sitemap: false
+---
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>{{ site.title | xml_escape }}</title>
+  <subtitle>{{ site.description | strip_newlines | xml_escape }}</subtitle>
+  <link href="{{ '/feed.xml' | absolute_url }}" rel="self" type="application/atom+xml"/>
+  <link href="{{ '/' | absolute_url }}" rel="alternate" type="text/html"/>
+  <id>{{ '/' | absolute_url }}</id>
+  {%- assign posts = site.blog | sort: "date" | reverse -%}
+  {%- if posts.first -%}<updated>{{ posts.first.date | date_to_xmlschema }}</updated>{%- else -%}<updated>{{ site.time | date_to_xmlschema }}</updated>{%- endif -%}
+  {%- for a in posts limit: 20 -%}
+  {%- assign author = site.data.authors[a.author] -%}
+  <entry>
+    <title>{{ a.title | xml_escape }}</title>
+    <link href="{{ a.url | absolute_url }}" rel="alternate" type="text/html"/>
+    <id>{{ a.url | absolute_url }}</id>
+    <published>{{ a.date | date_to_xmlschema }}</published>
+    <updated>{{ a.date | date_to_xmlschema }}</updated>
+    {%- if author -%}<author><name>{{ author.name | xml_escape }}</name></author>{%- endif -%}
+    {%- if a.category -%}<category term="{{ a.category | xml_escape }}"/>{%- endif -%}
+    {%- for t in a.tags -%}<category term="{{ t | xml_escape }}"/>{%- endfor -%}
+    <summary>{{ a.description | default: a.excerpt | strip_html | strip_newlines | xml_escape }}</summary>
+    <content type="html">{{ a.content | strip_html | truncatewords: 120 | xml_escape }}</content>
+  </entry>
+  {%- endfor -%}
+</feed>

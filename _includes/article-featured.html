@@ -1,0 +1,19 @@
+{%- comment -%} Featured (latest) post for /blog/: category, title, desc, author · date. {%- endcomment -%}
+{%- assign a = include.article -%}
+<article class="featured card">
+  {%- if a.category -%}
+  {%- assign cat_slug = a.category | slugify -%}
+  <a class="tagchip tagchip--cat" href="{{ '/category/' | append: cat_slug | append: '/' | relative_url }}">{{ a.category }}</a>
+  {%- endif -%}
+  <h2 class="featured__title"><a href="{{ a.url | relative_url }}">{{ a.title }}</a></h2>
+  {%- if a.description or a.excerpt -%}
+  <p class="featured__desc">{{ a.description | default: a.excerpt | strip_html }}</p>
+  {%- endif -%}
+  <div class="featured__meta">
+    {%- if a.author -%}
+    <a class="byline" href="{{ '/@' | append: a.author | append: '/' | relative_url }}">@{{ a.author }}</a>
+    <span class="dot">·</span>
+    {%- endif -%}
+    <time datetime="{{ a.date | date_to_xmlschema }}">{{ a.date | date: '%b %-d, %Y' }}</time>
+  </div>
+</article>

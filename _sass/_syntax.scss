@@ -1,0 +1,40 @@
+// ===========================================================================
+//  Rouge syntax highlighting — merged palette
+//    LIGHT: subdued, on-neutral (minimalist)
+//    DARK:  pastel-neon terminal (hacker pastel)
+// ===========================================================================
+
+:root,
+:root[data-theme="light"] {
+  --hl-comment: #7E828E;   // cool grey, italic
+  --hl-keyword: #097A4A;   // mint (matches accent)
+  --hl-string:  #2A6F8F;   // slate-teal
+  --hl-number:  #9A6A3A;   // muted amber
+  --hl-func:    #0B6E5A;   // deep green-teal
+  --hl-const:   #7A5A22;   // amber
+  --hl-tag:     #8A4A6A;   // muted plum
+}
+:root[data-theme="dark"] {
+  --hl-comment: #6C7086;
+  --hl-keyword: #BDB2FF;   // lavender
+  --hl-string:  #7EF3B0;   // strong mint
+  --hl-number:  #FFD6A5;   // pastel orange
+  --hl-func:    #9BF6FF;   // cyan
+  --hl-const:   #FDFFB6;   // pastel yellow
+  --hl-tag:     #FFADAD;   // pastel red
+}
+
+.highlight, .prose pre {
+  .c, .cm, .c1, .cs, .cd { color: var(--hl-comment); font-style: italic; }
+  .k, .kd, .kn, .kp, .kr, .kt, .kv { color: var(--hl-keyword); }
+  .o, .ow { color: var(--hl-keyword); }
+  .s, .s1, .s2, .sb, .sc, .sd, .se, .sh, .si, .sx, .sr, .ss { color: var(--hl-string); }
+  .m, .mi, .mf, .mh, .mo, .il { color: var(--hl-number); }
+  .nf, .nb, .bp { color: var(--hl-func); }
+  .no, .nc, .nn, .vc, .vg, .vi { color: var(--hl-const); }
+  .nt { color: var(--hl-tag); }
+  .na { color: var(--hl-func); }
+  .gd { color: var(--hl-tag); }
+  .gi { color: var(--hl-string); }
+  .err { color: var(--hl-tag); }
+}

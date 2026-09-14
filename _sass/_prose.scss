@@ -1,0 +1,125 @@
+// ===========================================================================
+//  Long-form article typography
+// ===========================================================================
+
+.article { padding-block: clamp(2.5rem, 2rem + 3vw, 4.5rem); max-width: var(--wrap-narrow); }
+.article__header { margin-bottom: 2.5rem; }
+.article__title { font-size: var(--fs-3xl); margin: 0.6rem 0 0; }
+.article__lead { font-size: var(--fs-lg); color: var(--text-soft); margin-top: 1rem; }
+.article__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+.article__meta-right { font-family: var(--font-mono); font-size: var(--fs-sm); }
+
+.author-pill { display: inline-flex; align-items: center; gap: 0.7rem; color: var(--text); }
+.author-pill:hover { color: var(--text); }
+.author-pill__avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  display: grid; place-items: center;
+  overflow: hidden;
+  background: var(--accent);
+  color: var(--on-accent); font-family: var(--font-mono); font-weight: 700;
+}
+.author-pill__avatar img { width: 100%; height: 100%; object-fit: cover; outline: 1px solid oklch(0 0 0 / 0.1); outline-offset: -1px; }
+:root[data-theme="dark"] .author-pill__avatar img { outline-color: oklch(1 0 0 / 0.1); }
+.author-pill__name { display: block; font-weight: 600; font-size: var(--fs-sm); }
+.author-pill__handle { display: block; font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--accent); }
+
+.article__tags { margin: 2.5rem 0; }
+
+// ---- Prose ----------------------------------------------------------------
+.prose { font-size: var(--fs-lg); line-height: 1.72; color: var(--text); }
+.prose > *:first-child { margin-top: 0; }
+.prose h2 { font-size: var(--fs-2xl); margin: 2.5rem 0 1rem; scroll-margin-top: 80px; }
+.prose h3 { font-size: var(--fs-xl); margin: 2rem 0 0.75rem; scroll-margin-top: 80px; }
+.prose p, .prose ul, .prose ol { margin: 0 0 1.25rem; }
+.prose ul, .prose ol { padding-left: 1.4rem; }
+.prose li { margin: 0.4rem 0; }
+.prose li::marker { color: var(--accent); }
+.prose a { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+.prose a:hover { text-decoration-color: var(--accent); }
+.prose strong { color: var(--text); font-weight: 700; }
+
+.prose blockquote {
+  margin: 1.75rem 0;
+  padding: 0.4rem 0 0.4rem 1.25rem;
+  border-left: 3px solid var(--accent);
+  color: var(--text-soft);
+  font-style: italic;
+}
+.prose blockquote p:last-child { margin-bottom: 0; }
+
+// Pure black/white low-opacity outline — a tinted neutral reads as dirt on the edge.
+.prose img {
+  border-radius: var(--radius); margin: 1.75rem 0;
+  outline: 1px solid oklch(0 0 0 / 0.1); outline-offset: -1px;
+}
+:root[data-theme="dark"] .prose img { outline-color: oklch(1 0 0 / 0.1); }
+// Component images embedded in a Markdown page (e.g. team avatars on /about/)
+// opt out of prose image sizing — the block's own rules style them.
+.prose .not-prose img { margin: 0; border-radius: 0; }
+
+// Inline code
+.prose :not(pre) > code {
+  font-size: 0.88em;
+  color: var(--accent);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 0.12em 0.4em;
+  border-radius: var(--radius-sm);
+  overflow-wrap: anywhere;   // long tokens break instead of overflowing on mobile
+}
+
+// Code blocks
+.prose pre {
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.1rem 1.25rem;
+  overflow-x: auto;
+  margin: 1.75rem 0;
+}
+.prose pre code { background: none; border: 0; padding: 0; color: inherit; }
+.highlight { margin: 1.75rem 0; border-radius: var(--radius); }
+.highlight pre { margin: 0; }
+
+// Tables
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+  margin: 1.75rem 0;
+  display: block;
+  overflow-x: auto;
+}
+.prose th, .prose td { padding: 0.6rem 0.9rem; border: 1px solid var(--border); text-align: left; }
+.prose th { background: var(--surface-2); font-family: var(--font-mono); }
+
+// ---- Author bio box + related ---------------------------------------------
+.author-bio { display: flex; gap: 1.25rem; margin: 3rem 0; }
+.author-bio__avatar {
+  width: 56px; height: 56px; flex-shrink: 0; border-radius: 50%;
+  display: grid; place-items: center;
+  overflow: hidden;
+  background: var(--accent);
+  color: var(--on-accent); font-family: var(--font-mono); font-weight: 700; font-size: 1.4rem;
+}
+.author-bio__avatar img { width: 100%; height: 100%; object-fit: cover; outline: 1px solid oklch(0 0 0 / 0.1); outline-offset: -1px; }
+:root[data-theme="dark"] .author-bio__avatar img { outline-color: oklch(1 0 0 / 0.1); }
+.author-bio__name { font-size: var(--fs-lg); margin: 0 0 0.4rem; }
+.author-bio__text { color: var(--text-soft); font-size: var(--fs-sm); margin: 0 0 0.6rem; }
+
+.related { margin-top: 3.5rem; padding-top: 2.5rem; border-top: 1px solid var(--border); }
+.related .section-title { font-size: var(--fs-xl); margin-bottom: 1.5rem; }
+
+// Markdown pages sometimes embed component grids — strip prose sizing there.
+.not-prose { font-size: var(--fs-base); }

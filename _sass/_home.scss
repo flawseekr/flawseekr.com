@@ -1,0 +1,132 @@
+// ===========================================================================
+//  Home landing — full-page scroll-snap panels + reveal-on-view animations.
+//  Everything is scoped to :root[data-page="home"] so no other page is touched.
+//  Best practice: CSS scroll-snap (no JS lib), animate only transform/opacity,
+//  and disable it all under prefers-reduced-motion.
+// ===========================================================================
+
+// Snap on the root document scroller (not body) so the existing sticky header
+// keeps working exactly as it does on every other page. scroll-padding-top
+// offsets each snap point below the 64px sticky header.
+:root[data-page="home"] {
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  scroll-padding-top: 64px;
+}
+// The global footer is replaced by a slim strip inside panel 2.
+:root[data-page="home"] .site-footer { display: none; }
+
+// ---- Panels ---------------------------------------------------------------
+:root[data-page="home"] .panel {
+  min-height: calc(100vh - 64px);        // fill the space under the sticky header
+  min-height: calc(100dvh - 64px);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+}
+// Panel 2: a 1fr/auto grid so the body sits dead-centre in the space above the
+// slim footer, which stays pinned to the bottom. Symmetric padding keeps it
+// visually centred (the old asymmetric padding threw the centring off).
+:root[data-page="home"] #panel-do {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  padding-block: clamp(1.5rem, 1rem + 2vh, 3rem);
+}
+:root[data-page="home"] .panel__body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;   // centre the header + cards within the 1fr track
+}
+
+// ---- Scroll cue (panel 1) -------------------------------------------------
+.scroll-cue {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(1.25rem, 3vh, 2.5rem);
+  transform: translateX(-50%);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  text-decoration: none;
+}
+.scroll-cue:hover { color: var(--accent); }
+.scroll-cue svg { animation: cue-bounce 1.8s var(--ease) infinite; }
+@keyframes cue-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(4px); }
+}
+
+// ---- Jump dots ------------------------------------------------------------
+.page-dots {
+  position: fixed;
+  right: clamp(0.75rem, 2vw, 1.75rem);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.page-dot {
+  width: 10px; height: 10px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.2s var(--ease), border-color 0.2s var(--ease), transform 0.2s var(--ease);
+}
+.page-dot:hover { border-color: var(--accent); }
+.page-dot.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  transform: scale(1.25);
+}
+@media (max-width: 640px) { .page-dots { display: none; } }
+
+// ---- Slim home footer (inside panel 2) ------------------------------------
+.home-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+.home-foot nav { display: flex; gap: 1.25rem; }
+.home-foot a { color: var(--text-soft); }
+.home-foot a:hover { color: var(--accent); }
+
+// ---- Reveal on view (panel 2) ---------------------------------------------
+:root[data-page="home"] .reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.5s var(--ease), transform 0.5s var(--ease);
+}
+:root[data-page="home"] .reveal.is-visible { opacity: 1; transform: none; }
+// Stagger the feature cards as they come in.
+:root[data-page="home"] .feature-grid .reveal:nth-child(1) { transition-delay: 0.05s; }
+:root[data-page="home"] .feature-grid .reveal:nth-child(2) { transition-delay: 0.13s; }
+:root[data-page="home"] .feature-grid .reveal:nth-child(3) { transition-delay: 0.21s; }
+
+// ---- Accessibility: honour reduced-motion + small/short viewports ---------
+@media (prefers-reduced-motion: reduce) {
+  :root[data-page="home"] { scroll-snap-type: none; scroll-behavior: auto; }
+  .scroll-cue svg { animation: none; }
+  :root[data-page="home"] .reveal { opacity: 1; transform: none; transition: none; }
+}
+// Mandatory snapping traps tall content; relax it when panels may overflow.
+@media (max-width: 640px), (max-height: 640px) {
+  :root[data-page="home"] { scroll-snap-type: y proximity; }
+  :root[data-page="home"] .panel { scroll-snap-stop: normal; }
+}

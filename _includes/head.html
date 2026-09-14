@@ -1,0 +1,40 @@
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#15161E">
+
+  <!-- Prevent theme flash: apply stored theme before paint. Light is the
+       intended default; the toggle lets visitors opt into dark. -->
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+
+  <!-- Icons -->
+  <link rel="icon" type="image/svg+xml" href="{{ '/favicon.svg' | relative_url }}">
+  <link rel="icon" type="image/x-icon" href="{{ '/favicon.ico' | relative_url }}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ '/apple-touch-icon.png' | relative_url }}">
+  <link rel="manifest" href="{{ '/site.webmanifest' | relative_url }}">
+
+  <!-- SEO: title, description, canonical, Open Graph, Twitter, JSON-LD -->
+  {%- seo -%}
+
+  <link rel="alternate" type="application/atom+xml" title="{{ site.title }}"
+        href="{{ '/feed.xml' | relative_url }}">
+
+  <!-- Fonts: JetBrains Mono (body/UI/code) + Space Grotesk (display titles),
+       self-hosted — see _sass/_fonts.scss. Preloaded since both are used
+       above the fold on every page. -->
+  <link rel="preload" href="{{ '/assets/fonts/jetbrains-mono-variable.woff2' | relative_url }}" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="{{ '/assets/fonts/space-grotesk-variable.woff2' | relative_url }}" as="font" type="font/woff2" crossorigin>
+
+  <link rel="stylesheet" href="{{ '/assets/css/main.css' | relative_url }}">
+
+  {%- if site.google_analytics and jekyll.environment == "production" -%}
+  <script>window.GA_MEASUREMENT_ID = "{{ site.google_analytics }}";</script>
+  {%- endif -%}
+</head>

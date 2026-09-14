@@ -1,0 +1,14 @@
+---
+layout: default
+---
+{%- assign posts = site.blog | where_exp: "a", "a.tags contains page.tag" | sort: "date" | reverse -%}
+<div class="wrap archive">
+  <header class="archive__header">
+    <p class="eyebrow">Tag</p>
+    <h1 class="archive__title">#{{ page.tag }}</h1>
+    <h2 class="archive__count">{{ posts.size }} post{% if posts.size != 1 %}s{% endif %} tagged</h2>
+  </header>
+  <div class="card-grid">
+    {%- for a in posts -%}{%- include article-card.html article=a -%}{%- endfor -%}
+  </div>
+</div>

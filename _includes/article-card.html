@@ -1,0 +1,22 @@
+{%- comment -%} Renders one article preview. Pass an article via include.article {%- endcomment -%}
+{%- assign a = include.article -%}
+{%- assign author = site.data.authors[a.author] -%}
+<article class="card article-card">
+  {%- if a.category -%}
+  {%- assign cat_slug = a.category | slugify -%}
+  <a class="tagchip tagchip--cat" href="{{ '/category/' | append: cat_slug | append: '/' | relative_url }}">{{ a.category }}</a>
+  {%- endif -%}
+  <h3 class="article-card__title">
+    <a href="{{ a.url | relative_url }}">{{ a.title }}</a>
+  </h3>
+  {%- if a.description or a.excerpt -%}
+  <p class="article-card__excerpt">{{ a.description | default: a.excerpt | strip_html | truncate: 140 }}</p>
+  {%- endif -%}
+  <div class="article-card__meta">
+    {%- if author -%}
+    <a class="byline" href="{{ '/@' | append: a.author | append: '/' | relative_url }}">@{{ a.author }}</a>
+    <span class="dot">·</span>
+    {%- endif -%}
+    <time datetime="{{ a.date | date_to_xmlschema }}">{{ a.date | date: '%b %-d, %Y' }}</time>
+  </div>
+</article>

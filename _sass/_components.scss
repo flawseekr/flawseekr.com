@@ -1,0 +1,404 @@
+// ===========================================================================
+//  Components
+// ===========================================================================
+
+// ---- Buttons --------------------------------------------------------------
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  padding: 0.7rem 1.15rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: scale 0.12s var(--ease), background 0.15s var(--ease), border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+  white-space: nowrap;
+}
+.btn:active { scale: 0.96; }       // tactile press — always 0.96, never below 0.95
+.btn--primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+.btn--primary:hover { background: var(--accent-strong); color: var(--on-accent); }
+.btn--ghost {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border-interactive);
+}
+.btn--ghost:hover { color: var(--text); border-color: var(--border-strong); }
+
+// ---- Card base ------------------------------------------------------------
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
+}
+
+// ---- Hero -----------------------------------------------------------------
+.hero {
+  position: relative;
+  overflow: hidden;
+  padding-block: clamp(3.5rem, 2rem + 8vw, 8rem);
+}
+.hero__inner { position: relative; z-index: 2; max-width: 820px; }
+.hero__title { font-size: var(--fs-3xl); letter-spacing: -0.035em; }
+.hero__lead {
+  font-size: var(--fs-lg);
+  color: var(--text-soft);
+  max-width: 60ch;
+  margin-top: 1.25rem;
+}
+.hero__actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 2rem; }
+.hero__stats {
+  display: flex;
+  gap: 2.5rem;
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+}
+.hero__stats strong {
+  display: block;
+  font-size: var(--fs-2xl);
+  font-family: var(--font-mono);
+  color: var(--text);
+}
+.hero__stats span { font-size: var(--fs-sm); color: var(--muted); }
+// Techie grid backdrop
+.hero__grid {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 70% 60% at 70% 20%, #000 40%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 70% 20%, #000 40%, transparent 100%);
+}
+
+// Enter animation: split the hero into semantic chunks and stagger each ~80ms.
+// Runs once on load; disabled entirely when the user prefers reduced motion.
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes hero-rise {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .hero__inner > * { animation: hero-rise 0.5s var(--ease) both; }
+  .hero__inner > *:nth-child(1) { animation-delay: 0.02s; }
+  .hero__inner > *:nth-child(2) { animation-delay: 0.10s; }
+  .hero__inner > *:nth-child(3) { animation-delay: 0.18s; }
+  .hero__inner > *:nth-child(4) { animation-delay: 0.26s; }
+  .hero__inner > *:nth-child(5) { animation-delay: 0.34s; }
+}
+
+// ---- Feature grid ---------------------------------------------------------
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--gap);
+}
+.feature__icon {
+  font-family: var(--font-mono);
+  font-size: 1.6rem;
+  color: var(--accent);
+  width: 48px; height: 48px;
+  display: grid; place-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+}
+.feature__title { font-size: var(--fs-xl); }
+.feature__text { color: var(--text-soft); font-size: var(--fs-sm); margin: 0; }
+
+// ---- Card grids -----------------------------------------------------------
+// auto-fit collapses empty tracks so few cards stretch to fill the row;
+// min(300px, 100%) prevents overflow on viewports narrower than the min.
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  gap: var(--gap);
+}
+// Team cards stay card-width (never stretch to full width), aligned left.
+.card-grid--team {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 240px));
+  justify-content: start;
+}
+
+// ---- Article card ---------------------------------------------------------
+.article-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  transition: transform 0.16s var(--ease), border-color 0.16s var(--ease), box-shadow 0.16s var(--ease);
+}
+.article-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-lg);
+}
+.article-card__title { font-size: var(--fs-xl); margin: 0.1rem 0 0; }
+.article-card__title a { color: var(--text); }
+.article-card__title a:hover { color: var(--accent); }
+.article-card__excerpt { color: var(--text-soft); font-size: var(--fs-sm); margin: 0; flex: 1; }
+.article-card__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;   // author · date sits to the right
+  margin-top: auto;            // pin meta to the bottom of the card
+  font-size: var(--fs-sm);
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+.byline { color: var(--accent); font-weight: 500; }
+.byline:hover { color: var(--accent-strong); }
+
+// ---- Articles index: featured latest + card grid --------------------------
+.featured { padding: clamp(1.5rem, 1rem + 2vw, 2.25rem); margin-bottom: 3rem; }
+.featured .tagchip--cat { margin-bottom: 0.9rem; }
+.featured__title { font-size: var(--fs-2xl); margin: 0 0 0.7rem; }
+.featured__title a { color: var(--text); }
+.featured__title a:hover { color: var(--accent); }
+.featured__desc { color: var(--text-soft); font-size: var(--fs-lg); margin: 0 0 1.1rem; }
+.featured__meta {
+  display: flex; align-items: center; flex-wrap: wrap;
+  justify-content: flex-end;   // author · date to the right
+  font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--muted);
+}
+
+.more-writing { margin: 0 0 1.25rem; }
+
+// ---- Tag chips ------------------------------------------------------------
+.taglist { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.tagchip {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-soft);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  transition: color 0.15s var(--ease), border-color 0.15s var(--ease), background 0.15s var(--ease);
+}
+.tagchip:hover { color: var(--accent); border-color: var(--accent); }
+// Category chips: accent-tinted (filled) vs plain neutral tag chips — the
+// distinction is value/fill, not a second hue.
+.tagchip--cat {
+  align-self: flex-start;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 500;
+}
+.tagchip--cat:hover { color: var(--accent-strong); border-color: var(--accent); }
+
+// ---- Chip row (category filter on /articles) ------------------------------
+.chip-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+.chip-row__label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+// ---- Team card ------------------------------------------------------------
+.team-card { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.35rem; }
+.team-card__avatar {
+  width: 68px; height: 68px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+  overflow: hidden;
+}
+.team-card__avatar img { width: 100%; height: 100%; object-fit: cover; outline: 1px solid oklch(0 0 0 / 0.1); outline-offset: -1px; }
+:root[data-theme="dark"] .team-card__avatar img { outline-color: oklch(1 0 0 / 0.1); }
+.team-card__name { font-size: var(--fs-lg); margin: 0; }
+.team-card__handle { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--accent); margin: 0; }
+.team-card__bio { font-size: var(--fs-sm); color: var(--text-soft); margin: 0.3rem 0 0; }
+.team-card__links { justify-content: center; margin-top: 0.9rem; }
+.team-card__articles {
+  display: inline-block;
+  margin-top: 1rem;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--accent);
+}
+.team-card__articles:hover { color: var(--accent-strong); }
+
+// ---- Search bar -----------------------------------------------------------
+.searchbar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--border-interactive);
+  border-radius: 999px;
+  padding: 0.55rem 1.1rem;
+  margin-top: 1.5rem;
+  max-width: 520px;
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+.searchbar:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
+.searchbar__icon { color: var(--muted); flex-shrink: 0; }
+.searchbar__input {
+  flex: 1;
+  min-width: 0;              // let the input shrink so the bar fits narrow screens
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  outline: none;
+}
+.searchbar__input::placeholder { color: var(--muted); }
+.searchbar__kbd {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.1rem 0.4rem;
+}
+.search-count { margin: 0.5rem 0 1.5rem; font-family: var(--font-mono); font-size: var(--fs-sm); }
+
+// ---- Archive / profile ----------------------------------------------------
+.archive { padding-block: clamp(2.5rem, 2rem + 3vw, 4.5rem); }
+.archive__header { margin-bottom: 2.5rem; }
+.archive__header--articles { max-width: var(--wrap-narrow); }
+.archive__title { font-size: var(--fs-3xl); }
+// A count heading (keeps h1 -> h2 -> h3 order) styled as plain muted text.
+.archive__count {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: 400;
+  letter-spacing: normal;
+  color: var(--muted);
+  margin: 0.25rem 0 0;
+}
+
+.profile {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+  padding: 2rem;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 3rem;
+}
+.profile__avatar {
+  width: 84px; height: 84px; flex-shrink: 0;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  overflow: hidden;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: var(--font-mono); font-weight: 700; font-size: 2rem;
+}
+.profile__avatar img { width: 100%; height: 100%; object-fit: cover; outline: 1px solid oklch(0 0 0 / 0.1); outline-offset: -1px; }
+:root[data-theme="dark"] .profile__avatar img { outline-color: oklch(1 0 0 / 0.1); }
+.profile__name { font-size: var(--fs-2xl); margin: 0.2rem 0 0; }
+.profile__handle { font-family: var(--font-mono); color: var(--accent); margin: 0; }
+.profile__bio { color: var(--text-soft); margin: 0.75rem 0 0; max-width: 62ch; }
+.profile__links { margin-top: 1.1rem; }
+
+// ---- Social icon links ----------------------------------------------------
+.social-links { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.social-link {
+  display: inline-grid;
+  place-items: center;
+  width: 40px; height: 40px;               // ≥40px hit area
+  border-radius: var(--radius-sm);
+  color: var(--text-soft);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  transition: color 0.15s var(--ease), border-color 0.15s var(--ease), background 0.15s var(--ease), scale 0.12s var(--ease);
+}
+.social-link:hover { color: var(--accent); border-color: var(--accent); }
+.social-link:active { scale: 0.96; }
+.social-link__svg { width: 18px; height: 18px; }
+.social-link__letter { font-family: var(--font-mono); font-weight: 700; font-size: var(--fs-sm); }
+.author-bio__links { margin: 0 0 1rem; }
+// 44px touch targets on mobile.
+@media (max-width: 720px) { .social-link { width: 44px; height: 44px; } }
+@media (max-width: 560px) { .profile { flex-direction: column; } }
+
+// ---- Contact --------------------------------------------------------------
+.contact { display: grid; grid-template-columns: 1fr 1.1fr; gap: 2.5rem; align-items: start; }
+.contact__channels { list-style: none; padding: 0; margin: 1.5rem 0 0; display: grid; gap: 0.9rem; }
+.contact__channels li { display: flex; align-items: baseline; gap: 1rem; }
+.contact__k {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  width: 72px; flex-shrink: 0;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.contact__form { display: grid; gap: 1rem; }
+.field { display: grid; gap: 0.4rem; }
+.field label { font-size: var(--fs-sm); font-weight: 500; color: var(--text-soft); }
+.field input, .field textarea {
+  width: 100%;
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  color: var(--text);
+  background: var(--bg-soft);
+  border: 1px solid var(--border-interactive);
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 0.9rem;
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+.field input:focus, .field textarea:focus {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring);
+}
+.field__hint { font-size: var(--fs-xs); margin: 0; }
+@media (max-width: 640px) { .contact { grid-template-columns: 1fr; } }
+
+// ---- Comments (Disqus, lazy + consent-gated — see comments.js) -----------
+.comments {
+  margin-top: 3.5rem;
+  padding-top: 2.5rem;
+  border-top: 1px solid var(--border);
+}
+.comments__prompt { margin: 0 0 0.9rem; }
+
+// ---- Cookie consent banner -------------------------------------------------
+.consent-banner {
+  position: fixed;
+  left: 1rem; right: 1rem; bottom: 1rem;
+  z-index: 70;
+  max-width: 640px;
+  margin-inline: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border-interactive);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  box-shadow: var(--shadow-lg);
+}
+.consent-banner[hidden] { display: none; }
+.consent-banner p { flex: 1 1 260px; margin: 0; font-size: var(--fs-sm); color: var(--text-soft); }
+.consent-banner__actions { display: flex; gap: 0.6rem; flex-shrink: 0; }
