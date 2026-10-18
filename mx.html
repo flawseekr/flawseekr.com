@@ -101,12 +101,17 @@
             section('2. Authorization Header Capture');
 
             var capturedHeaders = [];
+            var selfUrl = location.href;
             var originalFetch = window.fetch;
             window.fetch = function() {
                 var url = arguments[0];
                 var init = arguments[1] || {};
+                var requestUrl = typeof url === 'string' ? url : (url && url.url ? url.url : '');
+                if (requestUrl === selfUrl || requestUrl.indexOf('eruda') !== -1) {
+                    return originalFetch.apply(this, arguments);
+                }
                 log('[FETCH INTERCEPTED]');
-                log('  URL: ' + (typeof url === 'string' ? url : url.url));
+                log('  URL: ' + requestUrl);
                 if (init.headers) {
                     var headers = init.headers;
                     if (headers instanceof Headers) {
@@ -139,9 +144,7 @@
 
             log('Fetch and XHR interceptors installed.');
             log('Authorization headers will be logged when captured.');
-
-            try { fetch(location.href, { method: 'HEAD' }).catch(function(){}); } catch(e) {}
-            try { var x = new OrigXHR(); x.open('HEAD', location.href); x.send(); } catch(e) {}
+            log('(Passive capture only — no outbound requests triggered to avoid redirect loops.)');
 
             /*
              * Section 3: Flutter InAppWebView Bridge
